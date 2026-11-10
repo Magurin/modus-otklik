@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, Check, ChevronDown, ChevronRight, FileAudio, Loader2, Mic, Pencil, RefreshCw, Upload, UserRound, X } from 'lucide-react'
 import { api } from '../api.js'
 import Select, { fromList, fromMap } from '../Select.jsx'
+import { isMedia, transcribe } from '../speech.js'
 import { Empty, ErrorNote, Modal, Spinner, Status, StatusPill, day, useApp, useLoad } from '../ui.jsx'
 
 const KIND = { problem: 'Проблема', proposal: 'Идея', praise: 'Благодарность', decision: 'Решение', task: 'Поручение' }
@@ -61,25 +62,42 @@ function UploadModal({ onClose, onDone }) {
   const [mode, setMode] = useState('file')
   const [over, setOver] = useState(false)
   const [sending, setSending] = useState(false)
+  const [step, setStep] = useState(null)
   const [err, setErr] = useState('')
   const input = useRef(null)
+  const alive = useRef(true)
+  useEffect(() => { alive.current = true; return () => { alive.current = false } }, [])
   const { meta } = useApp()
-  const speech = meta.speech !== false
+  const speech = meta.speech  // local - Whisper на сервере, api - режем в браузере и распознаем через OpenAI, '' - только текст
   const pick = (f) => { if (f) { setFile(f); if (!title.trim()) setTitle(f.name.replace(/\.[^.]+$/, '')) } }
   const ok = title.trim() && (mode === 'file' ? file : text.trim().length >= 50)
-  const submit = () => {
+  const close = () => { alive.current = false; onClose() }
+  const submit = async () => {
     setSending(true); setErr('')
     const fd = new FormData()
     fd.set('title', title)
     fd.set('held_at', date)
-    if (mode === 'file') fd.set('file', file)
-    else fd.set('transcript', text)
-    api.form('/meetings', fd).then(onDone).catch((e) => { setErr(e.message); setSending(false) })
+    try {
+      if (mode === 'text') fd.set('transcript', text)
+      else if (speech === 'api' && isMedia(file)) {
+        const t = await transcribe(file, setStep, () => alive.current)
+        if (t === null) return
+        fd.set('transcript', t)
+        fd.set('source_name', file.name)
+        setStep({ step: 'extract' })
+      } else fd.set('file', file)
+      const m = await api.form('/meetings', fd)
+      if (alive.current) onDone(m)
+    } catch (e) {
+      if (alive.current) { setErr(e.message); setSending(false); setStep(null) }
+    }
   }
+  const stepText = !step ? '' : step.step === 'decode' ? 'Читаю звук из файла'
+    : step.step === 'part' ? `Распознаю речь: часть ${step.done + 1} из ${step.total}` : 'Выделяю главное'
   return (
-    <Modal title="Новое совещание" onClose={onClose}
-      footer={<><button className="btn ghost" onClick={onClose}>Отмена</button>
-        <button className="btn primary" disabled={!ok || sending} onClick={submit}>{sending && <Loader2 size={16} className="spin" />} Разобрать</button></>}>
+    <Modal title="Новое совещание" onClose={close}
+      footer={<><button className="btn ghost" onClick={close}>Отмена</button>
+        <button className="btn primary" disabled={!ok || sending} onClick={submit}>{sending && <Loader2 size={16} className="spin" />} {stepText || 'Разобрать'}</button></>}>
       {mode === 'file' ? (
         <div className={`dropzone ${over ? 'over' : ''} ${file ? 'has' : ''}`} onClick={() => input.current.click()}
           onDragOver={(e) => { e.preventDefault(); setOver(true) }} onDragLeave={() => setOver(false)}
@@ -87,7 +105,7 @@ function UploadModal({ onClose, onDone }) {
           onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && input.current.click()}>
           {file ? <FileAudio size={28} /> : <Upload size={28} />}
           <b>{file ? file.name : speech ? 'Перетащите запись сюда или нажмите' : 'Перетащите протокол сюда или нажмите'}</b>
-          {!file && <span className="small">{speech ? 'Аудио, видео, .txt или .docx' : '.txt или .docx · на демо-стенде записи не распознаются'}</span>}
+          {!file && <span className="small">{speech === 'api' ? 'Аудио, видео, .txt или .docx · речь распознает OpenAI' : speech ? 'Аудио, видео, .txt или .docx' : '.txt или .docx · здесь записи не распознаются'}</span>}
           <input ref={input} type="file" hidden accept={speech ? 'audio/*,video/*,.txt,.md,.docx,.vtt,.srt,.oga,.opus' : '.txt,.md,.docx,.vtt,.srt'} onChange={(e) => pick(e.target.files[0])} />
         </div>
       ) : (

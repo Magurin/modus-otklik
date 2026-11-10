@@ -1,7 +1,8 @@
 """Совещания: запись или текст -> расшифровка -> пункты (проблемы, предложения, решения, поручения).
 
-Речь распознается локально (faster-whisper), аудио наружу не уходит. Пункты - черновики:
-обращением пункт становится только после того, как человек его подтвердил.
+Речь распознается локально (faster-whisper), аудио наружу не уходит. Где Whisper нет (Vercel) и задан ключ
+OpenAI, браузер режет запись на куски и каждый распознается через API (transcribe_api).
+Пункты - черновики: обращением пункт становится только после того, как человек его подтвердил.
 """
 from __future__ import annotations
 
@@ -9,6 +10,7 @@ import logging
 import threading
 from pathlib import Path
 
+import httpx
 from sqlalchemy import select
 
 from . import ai
@@ -85,6 +87,49 @@ def transcribe_media(path: str) -> str:
             with _model_lock:
                 _model = _load("cpu")
             return _run(_model, path)
+
+
+MAX_API_PART = 4_400_000  # кусок WAV 16 кГц моно до 2 мин (~3,8 МБ); тело запроса на Vercel ограничено 4,5 МБ
+SPEECH_PROMPT = ("Рабочее совещание в ГК «Модус Трейд»: поставка и внедрение систем безопасности - видеонаблюдение, "
+                 "СКУД, ОПС, пожарная безопасность, периметр; продажи, закупки, проектирование, пусконаладка, сервис.")
+SPEECH_KEYWORDS = ["Модус Трейд", "СКУД", "ОПС", "пусконаладка", "Битрикс24", "1С"]
+
+
+class SpeechError(Exception):
+    """Понятная пользователю причина, по которой кусок записи не распознан."""
+
+
+def transcribe_api(audio: bytes, filename: str, prev: str = "") -> str:
+    """Распознать один кусок записи через OpenAI-совместимый /audio/transcriptions.
+
+    prev - конец расшифровки предыдущего куска: с ним модель не теряет нить на стыке.
+    """
+    model = settings.transcribe_model
+    prompt = SPEECH_PROMPT + (f"\n{prev.strip()[-300:]}" if prev.strip() else "")
+    data: dict = {"model": model, "response_format": "json", "prompt": prompt}
+    if model.startswith("gpt-transcribe"):
+        data |= {"languages[]": "ru", "keywords[]": SPEECH_KEYWORDS}
+    else:  # gpt-4o-transcribe, whisper-1 и локальные серверы с OpenAI-совместимым API
+        data["language"] = "ru"
+    try:
+        r = httpx.post(f"{settings.openai_base_url}/audio/transcriptions", data=data,
+                       files={"file": (filename, audio, "audio/wav")},
+                       headers={"Authorization": f"Bearer {settings.openai_key}"}, timeout=110.0)
+    except httpx.HTTPError as e:
+        log.warning("Распознавание через API: нет связи (%s)", e)
+        raise SpeechError("Нет связи с сервисом распознавания речи, попробуйте еще раз") from e
+    if r.status_code in (401, 403):
+        log.error("Распознавание через API: ключ не принят (%s)", r.status_code)
+        raise SpeechError("Сервис распознавания речи не принял ключ OpenAI")
+    if r.status_code == 429:
+        raise SpeechError("Превышен лимит запросов OpenAI или закончились средства на счете")
+    if r.status_code >= 400:
+        log.warning("Распознавание через API: ошибка %s: %s", r.status_code, r.text[:300])
+        raise SpeechError(f"Сервис распознавания речи вернул ошибку {r.status_code}")
+    try:
+        return str(r.json().get("text") or "").strip()
+    except ValueError as e:
+        raise SpeechError("Сервис распознавания речи ответил не данными") from e
 
 
 def read_text_file(path: Path) -> str:

@@ -57,9 +57,12 @@ class Settings:
     openai_model = _env("OPENAI_MODEL", "gpt-5.6-luna")
     openai_base_url = _env("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 
-    # Совещания: локальное распознавание речи
+    # Совещания: распознавание речи. local - Whisper на этом сервере; api - через OpenAI (/audio/transcriptions),
+    # запись режется на куски в браузере; off - только текст. По умолчанию: local, на Vercel - api, если есть ключ
+    speech_mode_env = _env("SPEECH_MODE").lower()
     whisper_model = _env("WHISPER_MODEL", "medium")
     whisper_device = _env("WHISPER_DEVICE", "auto")
+    transcribe_model = _env("TRANSCRIBE_MODEL", "gpt-transcribe")
 
     # Каналы приема
     telegram_token = _env("TELEGRAM_BOT_TOKEN")
@@ -87,7 +90,6 @@ class Settings:
 
     serverless = SERVERLESS
     background = _env("BACKGROUND", "0" if SERVERLESS else "1") == "1"  # фоновые задачи: бот, почта, контроль сроков
-    speech = not SERVERLESS  # распознавание записей совещаний доступно только на своем сервере
     first_response_hours = int(_env("FIRST_RESPONSE_HOURS", "48"))
 
     @property
@@ -96,6 +98,15 @@ class Settings:
         if self.ai_mode == "rules":
             return ""
         return "claude" if self.anthropic_key else "openai" if self.openai_key else ""
+
+    @property
+    def speech_mode(self) -> str:
+        """local, api или пустая строка (записи не распознаются). Звук в API уходит только при ключе OpenAI."""
+        api_ok = bool(self.openai_key) and self.ai_mode != "rules"
+        mode = self.speech_mode_env or ("api" if SERVERLESS else "local")
+        if mode == "api":
+            return "api" if api_ok else ""
+        return "local" if mode == "local" and not SERVERLESS else ""
 
     @property
     def llm_enabled(self) -> bool:

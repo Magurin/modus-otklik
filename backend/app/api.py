@@ -232,7 +232,7 @@ def meta(user: User = Depends(current_user), db: Session = Depends(get_db)):
                         "responsible": c.responsible.name if c.responsible else None, "sla_days": c.sla_days} for c in cats],
         "departments": [{"id": d.id, "name": d.name} for d in db.scalars(select(Department).order_by(Department.name))],
         "ai": ai.engine_name(),
-        "speech": settings.speech,  # можно ли загружать аудио и видео совещаний
+        "speech": settings.speech_mode,  # local, api (звук режет браузер, распознает OpenAI) или "" - только текст
     }
     if user.role != "employee":
         hs = db.scalars(select(User).where(User.active, User.role != "employee").order_by(User.name)).all()
@@ -726,19 +726,24 @@ def item_view(db: Session, i: MeetingItem) -> dict:
 
 @router.post("/meetings")
 def create_meeting(title: str = Form(...), held_at: str = Form(""), transcript: str = Form(""),
-                   file: UploadFile | None = File(None), user: User = Depends(handler), db: Session = Depends(get_db)):
+                   source_name: str = Form(""), file: UploadFile | None = File(None),
+                   user: User = Depends(handler), db: Session = Depends(get_db)):
+    """source_name - имя исходной записи, если ее уже распознал браузер и прислал готовую расшифровку."""
     if not title.strip():
         bad("Укажите название совещания")
     has_file = file is not None and bool(file.filename)
+    transcript = transcript.replace("\r\n", "\n")  # браузер передает переводы строк формы как \r\n
     if not has_file and len(transcript.strip()) < 50:
         bad("Приложите запись совещания или вставьте текст протокола")
-    stored = filename = ""
+    stored, filename = "", Path(source_name).name[:255]
     if has_file:
         ext = Path(file.filename).suffix.lower()
         if ext not in meetings.ALLOWED_EXT:
             bad("Поддерживаются аудио, видео, .txt и .docx")
-        if ext in meetings.MEDIA_EXT and not settings.speech:
-            bad("На демо-стенде записи не распознаются - загрузите протокол или расшифровку (.txt, .docx)")
+        if ext in meetings.MEDIA_EXT and settings.speech_mode == "api":
+            bad("Запись распознается по частям прямо в браузере - обновите страницу и загрузите ее снова")
+        if ext in meetings.MEDIA_EXT and settings.speech_mode != "local":
+            bad("Здесь записи не распознаются - загрузите протокол или расшифровку (.txt, .docx)")
         stored, _ = save_upload(file, MAX_MEETING_FILE)
         filename = Path(file.filename).name[:255]
     try:
@@ -751,6 +756,23 @@ def create_meeting(title: str = Form(...), held_at: str = Form(""), transcript: 
     db.commit()
     run_meeting(db, m)
     return meeting_row(m)
+
+
+@router.post("/meetings/transcribe")
+def transcribe_part(audio: UploadFile = File(...), prev: str = Form(""), user: User = Depends(handler)):
+    """Распознать один кусок записи (WAV до ~2 мин) через OpenAI. Куски режет и склеивает браузер:
+    так запись любой длины проходит через лимит тела запроса на Vercel и не нужен ffmpeg на сервере."""
+    if settings.speech_mode != "api":
+        bad("Распознавание через API выключено", 409)
+    data = audio.file.read(meetings.MAX_API_PART + 1)
+    if not data:
+        bad("Пустой фрагмент записи")
+    if len(data) > meetings.MAX_API_PART:
+        bad("Фрагмент записи слишком большой", 413)
+    try:
+        return {"text": meetings.transcribe_api(data, Path(audio.filename or "part.wav").name, prev)}
+    except meetings.SpeechError as e:
+        bad(str(e), 502)
 
 
 def run_meeting(db: Session, m: Meeting) -> None:
