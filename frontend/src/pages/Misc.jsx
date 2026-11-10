@@ -66,7 +66,7 @@ export function Profile() {
     <div className="page narrow">
       <div className="stack">
         <div className="card pad row" style={{ gap: 16 }}>
-          <Avatar name={user.name} size="lg" />
+          <Avatar name={user.name} size="lg" role={user.role} />
           <div className="grow">
             <h1 className="title">{user.name}</h1>
             <div className="ink2">{user.position}</div>

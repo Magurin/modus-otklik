@@ -2,19 +2,22 @@ import { useEffect, useRef } from 'react'
 
 // Фон страницы входа: голоса сотрудников (линии) стекаются с краев экрана в одну точку - под форму входа.
 // side: с какого края идет пучок, at: высота старта (доля экрана), n: число линий, gap: шаг между ними
+// Цвета пучков - цвета ролей из design/tokens.css (--role-*-solid): четыре роли, четыре потока.
+// Прежняя палитра (золотой 201,163,92; розовый 228,143,169; бирюзовый 47,158,148) спорила с цветами статусов.
+const ROLE = { employee: '51,88,212', manager: '124,92,214', director: '31,147,184', admin: '114,114,107' }
 const BUNDLES = [
-  { side: -1, at: 0.2, n: 9, gap: 26, rgb: '51,88,212', bold: 5 },
-  { side: -1, at: 0.88, n: 6, gap: 30, rgb: '201,163,92', bold: -1 },
-  { side: 1, at: 0.1, n: 6, gap: 28, rgb: '228,143,169', bold: -1 },
-  { side: 1, at: 0.76, n: 8, gap: 24, rgb: '47,158,148', bold: 3 },
+  { side: -1, at: 0.2, n: 9, gap: 26, rgb: ROLE.employee, bold: 5 },
+  { side: -1, at: 0.88, n: 6, gap: 30, rgb: ROLE.admin, bold: -1 },
+  { side: 1, at: 0.1, n: 6, gap: 28, rgb: ROLE.manager, bold: -1 },
+  { side: 1, at: 0.76, n: 8, gap: 24, rgb: ROLE.director, bold: 3 },
 ]
 // замкнутые контуры вокруг формы
 const RINGS = [
-  { rx: 430, ry: 300, rgb: '228,143,169', a: 0.5, w: 1.6, fill: 0.05 },
-  { rx: 480, ry: 345, rgb: '228,143,169', a: 0.28, w: 1 },
-  { rx: 545, ry: 400, rgb: '47,158,148', a: 0.55, w: 2 },
-  { rx: 600, ry: 450, rgb: '47,158,148', a: 0.22, w: 1 },
-  { rx: 665, ry: 505, rgb: '51,88,212', a: 0.16, w: 1 },
+  { rx: 430, ry: 300, rgb: ROLE.manager, a: 0.34, w: 1.4, fill: 0.035 },
+  { rx: 480, ry: 345, rgb: ROLE.manager, a: 0.2, w: 1 },
+  { rx: 545, ry: 400, rgb: ROLE.director, a: 0.42, w: 1.8 },
+  { rx: 600, ry: 450, rgb: ROLE.director, a: 0.18, w: 1 },
+  { rx: 665, ry: 505, rgb: ROLE.employee, a: 0.14, w: 1 },
 ]
 
 const bez = (p, t) => {

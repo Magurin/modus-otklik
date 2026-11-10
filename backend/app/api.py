@@ -74,7 +74,10 @@ def event_view(e: Event, a: Appeal, viewer: User) -> dict:
     if not e.actor_id:
         actor = "ИИ-помощник" if e.data.get("by_ai") else "Система"
     return {"id": e.id, "kind": e.kind, "text": e.text, "data": e.data, "internal": e.internal, "actor": actor,
-            "actor_id": None if actor == "Автор" else e.actor_id, "created_at": iso(e.created_at)}
+            "actor_id": None if actor == "Автор" else e.actor_id,
+            # роль нужна для цвета аватара; у анонимного автора и у системы ее не показываем
+            "actor_role": e.actor.role if e.actor and actor != "Автор" else None,
+            "created_at": iso(e.created_at)}
 
 
 def appeal_detail(db: Session, a: Appeal, viewer: User) -> dict:

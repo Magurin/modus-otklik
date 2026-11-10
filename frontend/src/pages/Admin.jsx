@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, Mail, Mic, Plus, Send, Sparkles } from 'lucide-react'
 import { api } from '../api.js'
-import { ErrorNote, Spinner, Status, useApp, useLoad } from '../ui.jsx'
+import { Avatar, ErrorNote, Spinner, Status, useApp, useLoad } from '../ui.jsx'
 import Select, { fromList, fromMap } from '../Select.jsx'
 import DesignSystem from './DesignSystem.jsx'
 
@@ -82,7 +82,8 @@ function Users() {
           <thead><tr><th>Сотрудник</th><th>Роль</th><th>Отсутствует</th><th>Кто замещает</th><th>Мессенджеры</th></tr></thead>
           <tbody>{rows.map((u) => (
             <tr key={u.id}>
-              <td><b>{u.name}</b><div className="small muted">{u.position} · {u.department}</div></td>
+              <td><div className="row"><Avatar name={u.name} role={u.role} />
+                <div><b>{u.name}</b><div className="small muted">{u.position} · {u.department}</div></div></div></td>
               <td><Select value={u.role} ariaLabel={`Роль: ${u.name}`} onChange={(v) => save(u.id, { role: v })}
                 options={fromMap(meta.roles).map((o) => ({ ...o, hint: ROLE_HINT[o.value] }))} /></td>
               <td><input type="checkbox" checked={u.is_absent} onChange={(e) => save(u.id, { is_absent: e.target.checked })} aria-label={`Отсутствует: ${u.name}`} /></td>

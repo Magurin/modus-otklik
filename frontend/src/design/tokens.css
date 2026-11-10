@@ -41,6 +41,13 @@
   --success-text: #1a7a4c;
   --success-solid: #2f9e68;
 
+  /* ---------- 3б. Цвета ролей: холодная часть спектра, где нет ни одного цвета состояния.
+     Используются только на аватаре и значке роли. solid - линии и точки, text - инициалы и значок, soft - фон аватара. */
+  --role-employee-solid: #3358d4;  --role-employee-text: #2a4abc;  --role-employee-soft: #e8edfd;  /* синий - цвет бренда */
+  --role-manager-solid: #7c5cd6;   --role-manager-text: #5a3fb3;   --role-manager-soft: #efebfc;   /* фиолетовый */
+  --role-director-solid: #1f93b8;  --role-director-text: #0e6c8a;  --role-director-soft: #e1f2f7;  /* сине-бирюзовый */
+  --role-admin-solid: #72726b;     --role-admin-text: #3e3e3a;     --role-admin-soft: #e8e8e4;     /* графитовый */
+
   /* ---------- 4. Роли: в компонентах используются только они ---------- */
   --bg: var(--n-50);                /* фон страницы */
   --surface: var(--n-0);            /* карточки, поля, меню */

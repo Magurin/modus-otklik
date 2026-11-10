@@ -56,11 +56,11 @@ async function scroll(total, step = 90) {
   await sleep(700)
 }
 const nav = (label) => click(page.locator('.nav-item', { hasText: label }))
-const role = (label) => click(page.locator('.role', { hasText: label }), 1500)
+const role = (label) => click(page.locator('.role-row', { hasText: label }), 1500)
 async function logout() { await click(page.locator('.nav-item', { hasText: 'Выйти' }), 1200) }
 async function loginAs(name) {
-  await click(page.getByRole('button', { name: 'Выбрать конкретного человека' }))
-  await click(page.locator('.person', { hasText: name }), 1500)
+  await click(page.locator('.login-card .segs button', { hasText: 'Человек' }))
+  await click(page.locator('.role-row', { hasText: name }), 1500)
 }
 const modalOk = () => click(page.locator('.modal footer .btn').last(), 1400)
 
@@ -74,7 +74,7 @@ process.on('unhandledRejection', (e) => { throw e })
 
 // ---------- 1. Вход ----------
 await page.goto(BASE)
-await page.waitForSelector('.role')
+await page.waitForSelector('.role-row')
 await page.mouse.move(W / 2, H / 2)
 await cap('Модус.Отклик: обратная связь сотрудников в одном месте')
 await sleep(1800)

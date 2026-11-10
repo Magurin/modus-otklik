@@ -117,7 +117,7 @@ function Event({ e, a, full }) {
     : e.kind === 'question' ? ' просит уточнить' : e.kind === 'answer' ? ' отвечает' : ''
   return (
     <div className={`msg ${e.kind} ${e.internal ? 'internal' : ''}`}>
-      <Avatar name={e.actor} size="sm" gray={!e.actor_id} />
+      <Avatar name={e.actor} size="sm" role={e.actor_role || ''} />
       <div className="body">
         <div><span className="who">{e.actor}</span><span className="ink2">{head}</span>{time}
           {e.internal && <span className="pill" style={{ marginLeft: 8 }}><Lock size={11} /> только для своих</span>}

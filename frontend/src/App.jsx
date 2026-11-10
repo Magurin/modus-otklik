@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
-import { BarChart3, Bell, CheckCircle2, Home as HomeIcon, Inbox, LayoutList, LogOut, Mic, PenLine, Settings } from 'lucide-react'
+import { BarChart3, Bell, CheckCircle2, Home as HomeIcon, Inbox, LayoutList, LogOut, Mic, Settings } from 'lucide-react'
 import { api, token } from './api.js'
-import { Avatar, Ctx, Empty, ErrorNote, Spinner, ago, useApp } from './ui.jsx'
-import FlowLines from './FlowLines.jsx'
+import { Avatar, Ctx, Empty, Spinner, ago, useApp } from './ui.jsx'
+import Login from './Login.jsx'
 import Home from './pages/Home.jsx'
 import { AppealList, AppealDetail } from './pages/Appeals.jsx'
 import { Meetings, MeetingDetail } from './pages/Meetings.jsx'
@@ -99,7 +99,7 @@ function Nav() {
         <Notifications />
         <button className="nav-item hide-phone" onClick={logout} title="Выйти"><LogOut size={18} /><span className="lbl">Выйти</span></button>
         <NavLink to="/profile" className="nav-me" title={user.name}>
-          <Avatar name={user.name} />
+          <Avatar name={user.name} role={user.role} />
           <span className="who"><b>{user.name}</b><span>{user.position}</span></span>
         </NavLink>
       </div>
@@ -151,94 +151,6 @@ function Notifications() {
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-// роль -> подпись, значок и человек, под которым входим по умолчанию
-const GROUPS = [
-  ['employee', 'Сотрудник', 'Пишет обращения', PenLine, 'sales@modus.demo'],
-  ['manager', 'Руководитель', 'Разбирает обращения', Inbox, 'it@modus.demo'],
-  ['director', 'Директор', 'Видит всю картину', BarChart3, 'director@modus.demo'],
-  ['admin', 'Администратор', 'Настраивает систему', Settings, 'admin@modus.demo'],
-]
-
-function Login({ onDone }) {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [demo, setDemo] = useState(null)
-  const [form, setForm] = useState(false)
-  const [everyone, setEveryone] = useState(false)
-  useEffect(() => { api.get('/auth/demo-users').then(setDemo).catch(() => setDemo([])) }, [])
-  const submit = (e) => {
-    e.preventDefault()
-    api.post('/auth/login', { email, password }).then((r) => onDone(r.token)).catch((er) => setError(er.message))
-  }
-  const quick = (em) => api.post('/auth/demo-login', { email: em }).then((r) => onDone(r.token)).catch((er) => setError(er.message))
-  if (demo === null) return <Spinner />
-  const hasDemo = demo.length > 0
-  return (
-    <div className="login">
-      <FlowLines />
-      <div className="box stack loose">
-        <div className="center stack tight">
-          <div className="brand"><img src="/favicon.svg" alt="" /><h1>Модус.Отклик</h1></div>
-          <p className="ink2">Проблемы и идеи сотрудников - в одном месте</p>
-        </div>
-        <ErrorNote text={error} />
-        {hasDemo && (
-          <>
-            <h2 className="center">Кем войти?</h2>
-            <div className="roles">
-              {GROUPS.map(([role, label, hint, Icon, email]) => {
-                const who = demo.find((u) => u.email === email) || demo.find((u) => u.role === role)
-                return who && (
-                  <button key={role} className="role" onClick={() => quick(who.email)}>
-                    <span className="type-ico"><Icon size={18} /></span>
-                    <b>{label}</b>
-                    <span>{hint}</span>
-                  </button>
-                )
-              })}
-            </div>
-          </>
-        )}
-        {hasDemo && everyone && (
-          <div className="card pad stack">
-            {GROUPS.map(([role, label]) => (
-              <div key={role} className="stack tight">
-                <h3>{label}</h3>
-                <div className="role-grid">
-                  {demo.filter((u) => u.role === role).map((u) => (
-                    <button key={u.email} className="person" onClick={() => quick(u.email)}>
-                      <Avatar name={u.name} />
-                      <span className="grow"><b>{u.name}</b><span>{u.position}</span></span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {hasDemo && (
-          <div className="row wrap" style={{ justifyContent: 'center' }}>
-            {!everyone && <button className="btn ghost" onClick={() => setEveryone(true)}>Выбрать конкретного человека</button>}
-            {!form && <button className="btn ghost" onClick={() => setForm(true)}>Войти по почте</button>}
-          </div>
-        )}
-        {(!hasDemo || form) && (
-          <form className="card pad stack" onSubmit={submit} style={{ maxWidth: 400, margin: '0 auto', width: '100%' }}>
-            <label className="field">Почта
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required autoFocus />
-            </label>
-            <label className="field">Пароль
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
-            </label>
-            <button className="btn primary lg">Войти</button>
-          </form>
-        )}
-      </div>
     </div>
   )
 }

@@ -171,6 +171,14 @@ label.check { display: flex; gap: var(--s-3); align-items: center; cursor: point
 .avatar { width: 34px; height: 34px; border-radius: 50%; background: var(--fill); color: var(--n-700); display: grid; place-items: center;
   font-weight: var(--fw-semibold); font-size: var(--fs-caption); flex: none; letter-spacing: .01em; }
 .avatar.sm { width: 28px; height: 28px; font-size: 11px; }
+/* цвет роли: единственное место, где он появляется, - аватар и значок роли */
+.r-employee { --role-soft: var(--role-employee-soft); --role-text: var(--role-employee-text); --role-solid: var(--role-employee-solid); }
+.r-manager { --role-soft: var(--role-manager-soft); --role-text: var(--role-manager-text); --role-solid: var(--role-manager-solid); }
+.r-director { --role-soft: var(--role-director-soft); --role-text: var(--role-director-text); --role-solid: var(--role-director-solid); }
+.r-admin { --role-soft: var(--role-admin-soft); --role-text: var(--role-admin-text); --role-solid: var(--role-admin-solid); }
+.avatar.role, .role-mark { background: var(--role-soft); color: var(--role-text); }
+.role-mark { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; flex: none; }
+.role-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--role-solid); flex: none; display: inline-block; }
 .avatar.lg { width: 56px; height: 56px; font-size: 18px; }
 /* плитка-значок: всегда нейтральная, различается только рисунком */
 .type-ico { width: 36px; height: 36px; border-radius: var(--r-md); display: grid; place-items: center; flex: none; background: var(--fill); color: var(--n-600); }
@@ -323,11 +331,64 @@ label.check { display: flex; gap: var(--s-3); align-items: center; cursor: point
 .progress .line { width: 24px; height: 2px; background: var(--n-200); }
 
 /* ================= 13. Аналитика ================= */
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--s-3); }
-.tile { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s-5); display: flex; flex-direction: column; gap: var(--s-1); }
-.tile .l { color: var(--muted); font-size: var(--fs-small); line-height: var(--lh-small); display: flex; align-items: center; gap: 6px; }
-.tile .v { font-size: 30px; font-weight: var(--fw-bold); line-height: 36px; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
-.tile.alert .v { color: var(--danger-text); }
+/* страница - четыре блока-вопроса; между блоками воздуха больше, чем внутри */
+.an { display: flex; flex-direction: column; gap: var(--s-12); }
+.sec { display: flex; flex-direction: column; gap: var(--s-4); }
+.sec-head h2 { font-size: var(--fs-title); line-height: var(--lh-title); font-weight: var(--fw-bold); letter-spacing: -.015em; }
+.sec-head p { margin: var(--s-1) 0 0; color: var(--ink-2); }
+.cols.c32 { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.card-head .count { min-width: 24px; height: 24px; padding: 0 var(--s-2); border-radius: var(--r-full); background: var(--fill); display: grid; place-items: center;
+  font-size: var(--fs-small); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; }
+.card-foot { padding: var(--s-2) var(--s-4); border-top: 1px solid var(--line); }
+/* главный блок: одно большое число, полоса стадий, справа три показателя скорости */
+.hero { display: grid; grid-template-columns: minmax(0, 1fr) 280px; }
+.hero-main { padding: var(--s-8); display: flex; flex-direction: column; justify-content: space-between; gap: var(--s-8); }
+.hero-say { display: flex; align-items: baseline; gap: var(--s-3); flex-wrap: wrap; }
+.hero-say b { font-size: 56px; line-height: 56px; font-weight: var(--fw-bold); letter-spacing: -.035em; font-variant-numeric: tabular-nums; }
+.hero-say span { font-size: var(--fs-title); line-height: var(--lh-title); color: var(--ink-2); }
+.flags { display: flex; flex-wrap: wrap; gap: var(--s-2); margin-top: var(--s-4); }
+.flag { display: inline-flex; align-items: center; gap: 6px; height: var(--h-sm); padding: 0 var(--s-3); border-radius: var(--r-full); background: var(--fill);
+  font-size: var(--fs-small); font-weight: var(--fw-medium); color: var(--ink-2); }
+a.flag:hover { background: var(--fill-hover); text-decoration: none; }
+.flag.bad { color: var(--danger-text); }
+.flag.warn { color: var(--warning-text); }
+.pipe { display: flex; gap: 3px; height: 14px; }
+.pipe i { border-radius: 4px; min-width: 8px; flex-basis: 0; }
+.pipe-legend { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); font-size: var(--fs-small); line-height: var(--lh-small); color: var(--ink-2); margin-top: var(--s-2); }
+.pipe-legend span { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.pipe-legend i, .share .li i { width: 8px; height: 8px; border-radius: 2px; flex: none; }
+.pipe-legend b, .share .li b { color: var(--ink); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; }
+.pipe-legend em, .share .li em { font-style: normal; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hero-side { border-left: 1px solid var(--line); display: flex; flex-direction: column; }
+.kpi { flex: 1; padding: var(--s-5) var(--s-6); display: flex; flex-direction: column; justify-content: center; border-bottom: 1px solid var(--line); }
+.kpi:last-child { border-bottom: 0; }
+.kpi .v { font-size: var(--fs-title); line-height: var(--lh-title); font-weight: var(--fw-bold); letter-spacing: -.015em; font-variant-numeric: tabular-nums; }
+.kpi .l { color: var(--ink-2); }
+/* строка списка «требуют действий» */
+.need { display: flex; align-items: center; gap: var(--s-4); padding: var(--s-4) var(--s-6); border-bottom: 1px solid var(--line); color: var(--ink); }
+.need:last-child { border-bottom: 0; }
+.need:hover { background: var(--surface-2); text-decoration: none; }
+.need b { font-weight: var(--fw-semibold); display: block; }
+/* доли целого */
+.shares { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-8); }
+.share .bar { display: flex; gap: 2px; height: 10px; margin: var(--s-3) 0; }
+.share .bar i { border-radius: 3px; flex-basis: 0; min-width: 4px; }
+.share .li { display: flex; align-items: center; gap: var(--s-2); padding: 3px 0; font-size: var(--fs-small); line-height: var(--lh-small); }
+.share .li em { width: 34px; text-align: right; }
+.deps { columns: 2; column-gap: var(--s-10); }
+.deps .hbar { break-inside: avoid; }
+.btn.more { margin-top: var(--s-2); margin-left: -10px; }
+.load { display: flex; align-items: center; gap: var(--s-3); }
+.load span { width: 16px; font-variant-numeric: tabular-nums; }
+.load i { height: 6px; border-radius: 3px; background: var(--series-1); min-width: 0; max-width: 120px; }
+@media (max-width: 900px) {
+  .hero, .cols.c32 { grid-template-columns: minmax(0, 1fr); }
+  .hero-side { border-left: 0; border-top: 1px solid var(--line); }
+  .hero-main { padding: var(--s-6); }
+  .shares { grid-template-columns: minmax(0, 1fr); }
+  .deps { columns: 1; }
+  .need { flex-direction: column; align-items: flex-start; gap: var(--s-2); }
+}
 .hbar { display: grid; grid-template-columns: minmax(110px, 38%) 1fr 28px; gap: var(--s-3); align-items: center; padding: 5px 0; font-size: var(--fs-small); line-height: var(--lh-small); }
 .hbar .track { height: 8px; display: flex; gap: 2px; }
 .hbar .fill { height: 100%; background: var(--series-1); border-radius: 0 3px 3px 0; min-width: 2px; }
@@ -338,8 +399,11 @@ label.check { display: flex; gap: var(--s-3); align-items: center; cursor: point
 .weeks { display: flex; align-items: flex-end; gap: var(--s-2); height: 140px; border-bottom: 1px solid var(--n-300); }
 .weeks .w { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: var(--s-1); height: 100%; position: relative; }
 .weeks .w .v { font-size: var(--fs-caption); font-weight: var(--fw-medium); color: var(--ink-2); font-variant-numeric: tabular-nums; }
-.weeks .w .b { width: min(28px, 60%); background: var(--series-1); border-radius: 4px 4px 0 0; }
-.weeks .w:hover .b { background: var(--accent-hover); }
+.weeks .w .pair { flex: 1; min-height: 0; width: 100%; display: flex; align-items: flex-end; justify-content: center; gap: 3px; padding-top: var(--s-5); }
+.weeks .w .b { width: min(22px, 34%); background: var(--series-1); border-radius: 4px 4px 0 0; position: relative; }
+.weeks .w .b .v { position: absolute; bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%); }
+.weeks .w .b.c { background: var(--n-300); }
+.weeks .w:hover .b:not(.c) { background: var(--accent-hover); }
 .weeks .w .tip { display: none; position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); background: var(--n-900); color: #fff; border-radius: var(--r-sm);
   padding: 6px 10px; font-size: var(--fs-caption); white-space: nowrap; z-index: 5; pointer-events: none; }
 .weeks .w:hover .tip { display: block; }
@@ -366,23 +430,29 @@ table.tbl td b { font-weight: var(--fw-semibold); }
 
 /* ================= 15. Вход ================= */
 .login { min-height: 100%; display: grid; place-items: start center; padding: var(--s-16) var(--s-4); }
-.login .box { width: min(720px, 100%); position: relative; z-index: 1; }
+.login .box { width: min(440px, 100%); position: relative; z-index: 1; }
 .flow-lines { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
 .login .brand { display: flex; align-items: center; gap: var(--s-3); justify-content: center; margin-bottom: var(--s-1); }
 .login .brand img { width: 40px; height: 40px; }
-.roles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-3); }
-.role { display: flex; flex-direction: column; align-items: flex-start; gap: var(--s-1); text-align: left; padding: var(--s-5); background: var(--surface);
-  border: 1px solid var(--line); border-radius: var(--r-lg); transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
-.role:hover { border-color: var(--n-400); box-shadow: var(--shadow-2); }
-.role .type-ico { margin-bottom: var(--s-3); }
-.role b { font-weight: var(--fw-semibold); font-size: var(--fs-heading); }
-.role > span:last-child { font-size: var(--fs-small); line-height: var(--lh-small); color: var(--muted); }
-.role-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: var(--s-2); }
-.person { display: flex; align-items: center; gap: var(--s-3); width: 100%; text-align: left; padding: 10px 12px; border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-md);
-  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease); }
-.person:hover { border-color: var(--n-400); background: var(--surface-2); }
-.person b { display: block; font-weight: var(--fw-semibold); font-size: var(--fs-small); line-height: var(--lh-small); color: var(--ink); }
-.person .grow > span { font-size: var(--fs-caption); color: var(--muted); display: block; line-height: var(--lh-caption); }
+/* карточка входа: одна спокойная поверхность, в которую сходятся линии фона.
+   Внутри - переключатель способа входа; строки те же, что в списках системы. */
+.login-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-xl); box-shadow: var(--shadow-2);
+  padding: var(--s-2); animation: rise .35s var(--ease) both; }
+@keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+.login-card > .segs { display: flex; margin: var(--s-1) var(--s-1) var(--s-2); }
+.login-card > .segs button { flex: 1; justify-content: center; }
+.login-rows { display: flex; flex-direction: column; gap: 2px; }
+.login-rows.scroll { max-height: 348px; overflow-y: auto; padding-right: 2px; }
+.login-rows h3 { padding: var(--s-3) var(--s-3) var(--s-1); display: flex; align-items: center; gap: var(--s-2); }
+.role-row { display: flex; align-items: center; gap: 14px; width: 100%; padding: 10px var(--s-3); border: 0; border-radius: var(--r-md); background: transparent; text-align: left;
+  transition: background var(--t-fast) var(--ease); }
+.role-row:hover { background: var(--fill); }
+.role-row b { display: block; font-weight: var(--fw-semibold); line-height: 21px; }
+.role-row .grow > span { display: block; font-size: var(--fs-small); line-height: var(--lh-small); color: var(--muted); }
+.role-row .arr { color: var(--n-300); transition: transform var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+.role-row:hover .arr { transform: translateX(3px); color: var(--ink-2); }
+.login-card .search { margin: 0 var(--s-1) var(--s-1); }
+.login-card form { padding: var(--s-2) var(--s-3) var(--s-3); }
 
 /* ================= 16. Справочник дизайн-системы ================= */
 .ds-section { display: flex; flex-direction: column; gap: var(--s-4); }
@@ -426,7 +496,7 @@ table.tbl td b { font-weight: var(--fw-semibold); }
   .nav-me { padding: 0; margin: 0; }
   .page { padding: var(--s-5) var(--s-4) 96px; }
   .grid.c2, .grid.c3, .cols.c3, .howto { grid-template-columns: minmax(0, 1fr); }
-  .roles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .login { padding-top: var(--s-10); }
   .notif { left: 8px; right: 8px; bottom: 68px; width: auto; }
   .item { padding: var(--s-4); gap: var(--s-2) var(--s-3); flex-wrap: wrap; }
   .item .side { flex-direction: row; flex-wrap: wrap; width: 100%; padding-left: 50px; align-items: center; gap: var(--s-3); }

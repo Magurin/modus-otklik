@@ -96,8 +96,9 @@ export function Empty({ icon: Icon, title, children }) {
 export function initials(name = '') {
   return name.split(' ').filter(Boolean).map((p) => p[0]).slice(0, 2).join('').toUpperCase()
 }
-export function Avatar({ name, size = '', gray = false }) {
-  return <span className={`avatar ${size} ${gray ? 'gray' : ''}`} aria-hidden>{initials(name) || '?'}</span>
+/** role - роль человека: аватар окрашивается в ее цвет. Без роли (система, внешний автор) аватар серый. */
+export function Avatar({ name, size = '', role = '' }) {
+  return <span className={`avatar ${size} ${role ? `role r-${role}` : ''}`} aria-hidden>{initials(name) || '?'}</span>
 }
 
 export function Modal({ title, children, footer, onClose }) {
