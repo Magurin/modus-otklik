@@ -28,7 +28,7 @@ export default function Home() {
           <div className="section-title">
             <h2>Мои обращения</h2>
             <div className="segs">
-              <button className={tab === 'open' ? 'on' : ''} onClick={() => setTab('open')}>В работе <span className="n">{open.length}</span></button>
+              <button className={tab === 'open' ? 'on' : ''} onClick={() => setTab('open')}>Открытые <span className="n">{open.length}</span></button>
               <button className={tab === 'closed' ? 'on' : ''} onClick={() => setTab('closed')}>Завершены <span className="n">{closed.length}</span></button>
             </div>
           </div>

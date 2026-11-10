@@ -663,13 +663,7 @@ def digest_facts(rows: list[Appeal]) -> str:
     for a in rows:
         if a.status in FINAL:
             continue
-        if workflow.overdue(a, t):
-            due = f"просрочено на {(t - a.due_at).days} дн."
-        elif a.due_at:
-            left = (a.due_at - t).days
-            due = "срок сегодня" if left == 0 else f"до срока {left} дн."
-        else:
-            due = "без срока"
+        due = workflow.due_phrase(a, t)
         lines.append(f"{a.number} | {TYPES[a.type]} | {PRIORITIES[a.priority]} | {STATUSES[a.status]} | "
                      f"{a.category.name if a.category else '-'} | {(t - a.created_at).days} | {due} | "
                      f"{len(a.supports)} | {a.title}: {a.text[:300]}")
@@ -688,7 +682,7 @@ def digest_rules(rows: list[Appeal]) -> str:
     out = []
     if over or high:
         out.append("**Требует решения**")
-        out += [f"- {a.number} просрочено на {(t - a.due_at).days} дн.: {a.title}" for a in over[:5]]
+        out += [f"- {a.number} {workflow.due_phrase(a, t)}: {a.title}" for a in over[:5]]
         out += [f"- {a.number}, высокий приоритет: {a.title}" for a in high[:5]]
     th = themes_rules(rows)[:3]
     if th:

@@ -1,17 +1,18 @@
 import { useMemo, useState } from 'react'
-import { Check, HelpCircle, MoreHorizontal, Paperclip, PenLine, Search, Send, ThumbsUp, Users } from 'lucide-react'
+import { Check, Clock, HelpCircle, MoreHorizontal, Paperclip, PenLine, Search, Send, ThumbsUp, Users } from 'lucide-react'
 import Select from '../Select.jsx'
 import { AppealItem, Avatar, Overdue, Status, StatusPill, Steps, TypeIcon, useApp } from '../ui.jsx'
 
 /** Живой справочник дизайн-системы: все показано настоящими компонентами и читает значения из tokens.css. */
 
+// те же шесть правил, что в шапке tokens.css и в README
 const RULES = [
   ['Нейтральная основа', 'Текст и поверхности берутся из одной серой шкалы. Цвет на экране - исключение, а не фон.'],
-  ['Один акцент', 'Синим отмечено главное действие, ссылка, фокус и текущий этап. Больше нигде.'],
-  ['Цвет состояния - точкой', 'Красный, янтарный и зеленый сообщают состояние: просрочено, ждем человека, сделано. Только точкой, значком или числом, без заливок.'],
-  ['Цвет роли - на аватаре', 'У каждой роли свой холодный цвет: синий, фиолетовый, сине-бирюзовый, графитовый. Он живет только на аватаре и значке роли и не пересекается с цветами состояний.'],
+  ['У цвета три языка', 'Действие - синий акцент: главная кнопка, ссылка, фокус, выбранный пункт. Этап обращения - своя шкала: у статуса один цвет в точке, на шкале этапов, на плитке типа и в аналитике. Роль человека - холодные цвета только на аватаре и значке роли.'],
+  ['Цвет не работает один', 'Красный, янтарный и зеленый сообщают состояние: отказ и просрочка, ждем человека, сделано. Рядом всегда стоит слово или значок. Сплошная заливка - только у метки «просрочено».'],
   ['Иерархия шрифтом', 'Важность показывают размер, насыщенность и отступы. Рамки и цвет для этого не используются.'],
-  ['Все из шкал', 'Размеры шрифта, отступы, скругления и высоты элементов берутся только из токенов.'],
+  ['Размеры из шкал', 'Размеры шрифта, отступы, скругления и высоты элементов берутся из токенов. Отступления известны (подписи 10-11px, скругление 12px у меню, крупное число в аналитике) и новые не добавляются.'],
+  ['Одно состояние - одно название', 'Подписи статусов приходят с сервера; шкала этапов, точки, вкладки и аналитика используют только их. Автору вместо «Ожидает уточнения» показывается «Нужен ваш ответ» - единственное исключение. Кнопки называют действие, а не состояние.'],
 ]
 
 const NEUTRAL = [
@@ -19,11 +20,14 @@ const NEUTRAL = [
   ['--n-200', 'дорожки'], ['--n-300', 'границы полей'], ['--n-400', 'неактивное'], ['--n-500', 'подписи'], ['--n-600', 'вторичный текст'],
   ['--n-700', 'текст статуса'], ['--n-800', 'счетчики'], ['--n-900', 'основной текст'],
 ]
-const ACCENT = [['--a-50', 'наведение'], ['--a-100', 'мягкий фон'], ['--a-200', 'кольцо фокуса'], ['--a-500', 'акцент'], ['--a-600', 'наведение на кнопку'], ['--a-700', 'нажатие']]
+const ACCENT = [['--a-50', 'наведение'], ['--a-100', 'мягкий фон'], ['--a-200', 'ореол поля в фокусе'], ['--a-500', 'акцент, кольцо фокуса'], ['--a-600', 'наведение на кнопку'], ['--a-700', 'текст на мягком фоне']]
 const SEMANTIC = [
-  ['--danger-solid', 'точка: отказ'], ['--danger-text', 'текст: просрочено'], ['--warning-solid', 'точка: ждем человека'], ['--warning-text', 'текст'],
+  ['--danger-solid', 'точка: отказ; метка: просрочено'], ['--danger-text', 'текст: просрочено'], ['--warning-solid', 'точка и значок: нужно решить'], ['--warning-text', 'текст'],
   ['--success-solid', 'точка: сделано'], ['--success-text', 'текст'],
 ]
+// этапы: токен -> код статуса; подписи берутся из meta.statuses, как и везде
+const STAGE = [['--stage-1', 'new'], ['--stage-2', 'review'], ['--stage-3', 'in_progress'], ['--stage-4', 'done'], ['--stage-wait', 'clarify']]
+const DEADLINE = [['--overdue-bg', 'метка: просрочено'], ['--waiting-bg', 'метка: без ответа'], ['--waiting-ink', 'текст метки «без ответа»']]
 const TYPE = [
   ['Заголовок страницы', 'display', '28 / 34 · 650', 'Что можно улучшить?'],
   ['Заголовок объекта', 'title', '22 / 28 · 650', 'Единое место для итоговых решений'],
@@ -80,10 +84,12 @@ export default function DesignSystem() {
         </div>
       </Block>
 
-      <Block title="Цвет" hint="Нейтральная шкала, один акцент и три цвета состояния">
+      <Block title="Цвет" hint="Нейтральная шкала, акцент для действий, цвета состояния, шкала этапов и метки сроков">
         <h3>Нейтральная шкала</h3><Swatches list={NEUTRAL} />
         <h3>Акцент</h3><Swatches list={ACCENT} />
         <h3>Состояния</h3><Swatches list={SEMANTIC} />
+        <h3>Этапы обращения</h3><Swatches list={STAGE.map(([token, status]) => [token, meta.statuses[status]])} />
+        <h3>Метки сроков</h3><Swatches list={DEADLINE} />
       </Block>
 
       <Block title="Цвета ролей" hint="Холодная часть спектра, где нет ни одного цвета состояния. Только на аватаре и значке роли">
@@ -112,7 +118,7 @@ export default function DesignSystem() {
         <div className="ds-radius">{RADIUS.map(([t, role]) => <div key={t}><i style={{ borderRadius: `var(${t})` }} /><span>{t.replace('--r-', '')} · {role}</span></div>)}</div>
       </Block>
 
-      <Block title="Кнопки" hint="На экране одна главная кнопка. Остальные - обычные или без рамки">
+      <Block title="Кнопки" hint="На экране одна главная кнопка. Остальные - обычные или без рамки. Фокус с клавиатуры (Tab) - кольцо акцентного цвета">
         <div className="row wrap">
           <button className="btn primary"><Check size={16} /> Главное действие</button>
           <button className="btn"><HelpCircle size={16} /> Обычная</button>
@@ -144,12 +150,14 @@ export default function DesignSystem() {
         <label className="check"><input type="checkbox" defaultChecked /> Флажок</label>
       </Block>
 
-      <Block title="Статусы и метки" hint="Цвет несет только точка. Кольцо - новое, синий - в движении, янтарь - ждем человека, зеленый - сделано, красный - отказ">
+      <Block title="Статусы и метки" hint="У статуса один цвет на всех экранах, рядом с точкой всегда слово. Последний в ряду - тот же статус «Ожидает уточнения» глазами автора">
         <div className="row wrap" style={{ gap: 20 }}>
           {Object.keys(meta.statuses).map((s) => <StatusPill key={s} status={s} />)}
+          <StatusPill status="clarify" mine />
         </div>
         <div className="row wrap" style={{ gap: 20 }}>
           <Overdue a={sample({ overdue: true })} />
+          <span className="status warn"><Clock size={14} /> без ответа 3 дн.</span>
           <Status dot="warn">Нужно решить: 5</Status>
           <Status dot="ok">подключен</Status>
           <span className="pill">Проблема</span>
@@ -158,6 +166,8 @@ export default function DesignSystem() {
         </div>
         <div className="row wrap">
           <TypeIcon type="problem" /><TypeIcon type="proposal" /><TypeIcon type="praise" />
+          <TypeIcon type="problem" status="new" /><TypeIcon type="problem" status="review" /><TypeIcon type="problem" status="in_progress" />
+          <TypeIcon type="problem" status="clarify" /><TypeIcon type="problem" status="done" /><TypeIcon type="problem" status="rejected" />
           <Avatar name="Артем Белов" /><Avatar name="Никита Соколов" size="sm" />
         </div>
       </Block>

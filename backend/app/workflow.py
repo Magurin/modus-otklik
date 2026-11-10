@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import ai
+from .config import settings
 from .models import FINAL, STATUSES, Appeal, Category, Event, Notification, Support, User, now
 
 log = logging.getLogger("workflow")
@@ -297,6 +298,28 @@ def similar(db: Session, text: str, exclude_id: int | None = None, limit: int = 
 
 def overdue(a: Appeal, at: datetime | None = None) -> bool:
     return bool(a.due_at and a.status not in FINAL and (at or now()) > a.due_at)
+
+
+def days_to_due(a: Appeal, at: datetime | None = None) -> int | None:
+    """Календарных дней до срока в часовом поясе компании: 0 - срок сегодня, отрицательное - просрочено.
+
+    Та же мера, что в интерфейсе (frontend/src/ui.jsx, dayDiff), чтобы «просрочено на N дн.»
+    в списке, карточке, аналитике и сводке было одним и тем же числом.
+    """
+    if not a.due_at:
+        return None
+    shift = timedelta(hours=settings.tz_hours)
+    return ((a.due_at + shift).date() - ((at or now()) + shift).date()).days
+
+
+def due_phrase(a: Appeal, at: datetime | None = None) -> str:
+    """Срок словами для сводки: «просрочено на 3 дн.», «просрочено сегодня», «срок сегодня», «до срока 2 дн.»."""
+    n = days_to_due(a, at)
+    if n is None:
+        return "без срока"
+    if overdue(a, at):
+        return f"просрочено на {-n} дн." if n < 0 else "просрочено сегодня"
+    return "срок сегодня" if n == 0 else f"до срока {n} дн."
 
 
 def check_deadlines(db: Session) -> int:

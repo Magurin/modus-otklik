@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AlertTriangle, Clock, Loader2, RefreshCw } from 'lucide-react'
 import { api } from '../api.js'
-import { ErrorNote, Markdown, Spinner, ago, useApp, useLoad } from '../ui.jsx'
+import { ErrorNote, Markdown, Spinner, ago, dayDiff, useApp, useLoad } from '../ui.jsx'
 
 /* Страница читается сверху вниз как четыре вопроса:
  * 1. Что сейчас происходит?  2. Что требует действий?  3. О чем и откуда пишут?  4. Кто отвечает?
@@ -19,7 +19,8 @@ const STAGE = {
   closed: 'var(--n-300)',
 }
 const SHADES = ['var(--a-500)', 'color-mix(in srgb, var(--a-500) 55%, white)', 'var(--a-200)', 'var(--n-300)', 'var(--n-200)']
-const days = (iso) => Math.max(1, Math.round(Math.abs(Date.now() - new Date(iso).getTime()) / 86400000))
+// календарные дни - та же мера, что у срока в списках и карточке (ui.jsx, dayDiff)
+const days = (iso) => Math.max(1, Math.abs(dayDiff(iso)))
 
 function Section({ title, hint, children }) {
   return (
@@ -167,7 +168,7 @@ export default function Analytics() {
         <div className="card hero">
           <div className="hero-main">
             <div>
-              <div className="hero-say"><b>{d.open}</b><span>из {d.total} обращений сейчас в работе</span></div>
+              <div className="hero-say"><b>{d.open}</b><span>из {d.total} обращений сейчас открыто</span></div>
               <div className="flags">
                 {d.overdue.length > 0 && <a href="#needs" className="flag bad"><AlertTriangle size={14} />{d.overdue.length} просрочено</a>}
                 {waiting.length > 0 && <a href="#needs" className="flag warn"><Clock size={14} />{waiting.length} без ответа 2+ дня</a>}

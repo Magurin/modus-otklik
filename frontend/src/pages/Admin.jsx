@@ -4,6 +4,7 @@ import { CheckCircle2, Mail, Mic, Plus, Send, Sparkles } from 'lucide-react'
 import { api } from '../api.js'
 import { Avatar, ErrorNote, Spinner, Status, useApp, useLoad } from '../ui.jsx'
 import Select, { fromList, fromMap } from '../Select.jsx'
+import DesignSystem from './DesignSystem.jsx'
 import Integrations from './Integrations.jsx'
 
 const SYNCED = { '1c': '1С', b24: 'Битрикс24', file: 'файл' }
@@ -18,7 +19,7 @@ export default function Admin() {
     <div className="page wide">
       <div className="head"><h1>Настройки</h1></div>
       <div className="tabs">
-        {[['routes', 'Кто что разбирает'], ['users', 'Сотрудники'], ['org', '1С и Битрикс24'], ['channels', 'Каналы']].map(([k, l]) => (
+        {[['routes', 'Кто что разбирает'], ['users', 'Сотрудники'], ['org', '1С и Битрикс24'], ['channels', 'Каналы'], ['design', 'Дизайн-система']].map(([k, l]) => (
           <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
@@ -26,6 +27,7 @@ export default function Admin() {
       {tab === 'users' && <Users />}
       {tab === 'org' && <Integrations />}
       {tab === 'channels' && <Channels />}
+      {tab === 'design' && <DesignSystem />}
     </div>
   )
 }

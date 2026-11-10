@@ -7,7 +7,7 @@ import {
 import { api, qs } from '../api.js'
 import Select, { fromList, fromMap } from '../Select.jsx'
 import {
-  AppealItem, Avatar, Empty, ErrorNote, Menu, Modal, Overdue, Spinner, StatusPill, Steps, TypeIcon, ago, day, dueText, useApp, useLoad,
+  AppealItem, Avatar, Empty, ErrorNote, Menu, Modal, Overdue, Spinner, StatusPill, Steps, TypeIcon, ago, day, daysLeft, dueText, useApp, useLoad,
 } from '../ui.jsx'
 
 /* ---------- список: входящие и все обращения ---------- */
@@ -43,7 +43,8 @@ export function AppealList({ scope }) {
   }, [rows, tab, status, groups])
   const active = Object.values(f).filter(Boolean).length
   const setV = (k) => (v) => setF({ ...f, [k]: v })
-  const TABS = [['open', 'Открытые'], ['new', 'Новые'], ['clarify', 'Ждут автора'], ['overdue', 'Просрочены'], ['closed', 'Завершены']]
+  // вкладки - те же слова, что у статусов (meta.statuses), во множественном числе; «Открытые» и «Завершены» - группы статусов
+  const TABS = [['open', 'Открытые'], ['new', 'Новые'], ['clarify', 'Ожидают уточнения'], ['overdue', 'Просрочены'], ['closed', 'Завершены']]
 
   return (
     <div className="page">
@@ -170,7 +171,7 @@ export function AppealDetail() {
             <div className="row wrap" style={{ gap: '6px 14px' }}>
               {a.author.anonymous && <span className="pill"><EyeOff size={12} /> анонимно</span>}
               {a.supports > 0 && <span className="pill"><Users size={12} /> +{a.supports} с тем же</span>}
-              <Overdue a={a} /><StatusPill status={a.status} />
+              <Overdue a={a} /><StatusPill status={a.status} mine={a.mine} />
             </div>
           </div>
           <h1 className="title">{a.title}</h1>
@@ -208,7 +209,8 @@ export function AppealDetail() {
             <Fact k="Ответственный">{a.assignee ? <>{a.assignee.name}<div className="small muted">{a.assignee.position}</div></> : <span className="muted">не назначен</span>}</Fact>
             <Fact k="Категория">{a.category || <span className="muted">нет</span>}</Fact>
             {a.closed_at ? <Fact k="Закрыто">{day(a.closed_at)}</Fact>
-              : <Fact k="Срок">{day(a.due_at)} <span className="small muted">· {dueText(a)}</span></Fact>}
+              : <Fact k="Срок">{day(a.due_at)}{/* «сегодня» и «завтра» говорят сами за себя - остаток дней к ним не дописываем */}
+                {(a.overdue || daysLeft(a) > 1) && <span className="small muted"> · {dueText(a)}</span>}</Fact>}
             {a.can.handle && <Fact k="Приоритет">{meta.priorities[a.priority]}</Fact>}
             {a.can.handle && <Fact k="Канал">{meta.sources[a.source]}{a.meeting_id && <div className="small"><Link to={`/meetings/${a.meeting_id}`}>открыть совещание</Link></div>}</Fact>}
           </div>

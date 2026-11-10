@@ -22,7 +22,11 @@ a { color: var(--accent); text-decoration: none; }
 a:hover { text-decoration: underline; }
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
-:focus-visible { outline: none; box-shadow: var(--focus); }
+/* фокус с клавиатуры - контрастное кольцо; поля показывают фокус акцентной рамкой с ореолом (раздел 5) */
+:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-gap); }
+/* строки и кнопки внутри контейнеров с overflow: кольцо рисуется внутрь, иначе его срежет */
+.item:focus-visible, .need:focus-visible, .role-row:focus-visible, .segs button:focus-visible, .tabs button:focus-visible,
+.notif .n-item:focus-visible, .menu button:focus-visible { outline-offset: calc(-1 * var(--focus-gap)); }
 
 .muted { color: var(--muted); }
 .ink2 { color: var(--ink-2); }
@@ -111,8 +115,10 @@ input[type=text], input[type=email], input[type=password], input[type=number], i
 textarea { resize: vertical; min-height: 88px; line-height: var(--lh-body); }
 input::placeholder, textarea::placeholder { color: var(--disabled); }
 input:hover, textarea:hover { border-color: var(--n-400); }
-input:focus, textarea:focus { border-color: var(--accent); box-shadow: var(--focus); }
+input:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus); }
 input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; }
+input[type=checkbox]:focus { box-shadow: none; }
+input[type=checkbox]:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-gap); }
 label.field { display: flex; flex-direction: column; gap: 6px; font-weight: var(--fw-medium); font-size: var(--fs-small); color: var(--ink-2); }
 label.field > span.opt { font-weight: var(--fw-regular); color: var(--muted); }
 label.check { display: flex; gap: var(--s-3); align-items: center; cursor: pointer; }
@@ -260,7 +266,6 @@ label.check { display: flex; gap: var(--s-3); align-items: center; cursor: point
   color: inherit; cursor: pointer; text-align: left; width: 100%; transition: background var(--t-fast) var(--ease); }
 .item:last-child { border-bottom: 0; }
 .item:hover { background: var(--surface-2); text-decoration: none; }
-.item:focus-visible { box-shadow: inset var(--focus); }
 .item .t { display: block; font-weight: var(--fw-semibold); line-height: 22px; overflow-wrap: anywhere; }
 .item .meta { display: flex; flex-wrap: wrap; align-items: center; margin-top: 2px; color: var(--muted); font-size: var(--fs-small); line-height: var(--lh-small); }
 .item .side { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex: none; padding-top: 2px; }

@@ -19,14 +19,20 @@ export function useLoad(fn, deps = []) {
 /* ---------- даты по-человечески ---------- */
 const pad = (n) => String(n).padStart(2, '0')
 const MONTHS = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
+const dayStart = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+/** Разница в календарных днях от сегодня: 1 - завтра, -1 - вчера. Одна мера для дат и сроков,
+ *  чтобы «завтра» и «осталось N дн.» не могли разойтись. */
+export function dayDiff(iso) {
+  return Math.round((dayStart(new Date(iso)) - dayStart(new Date())) / 86400000)
+}
 export function day(iso) {
   if (!iso) return ''
   const d = new Date(iso)
   const now = new Date()
-  const diff = Math.round((new Date(now.getFullYear(), now.getMonth(), now.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 86400000)
+  const diff = dayDiff(iso)
   if (diff === 0) return 'сегодня'
-  if (diff === 1) return 'вчера'
-  if (diff === -1) return 'завтра'
+  if (diff === -1) return 'вчера'
+  if (diff === 1) return 'завтра'
   return `${d.getDate()} ${MONTHS[d.getMonth()]}${d.getFullYear() !== now.getFullYear() ? ` ${d.getFullYear()}` : ''}`
 }
 export function dayTime(iso) {
@@ -43,15 +49,18 @@ export function ago(iso) {
   const d = Math.round(m / 60 / 24)
   return d < 8 ? `${d} дн. назад` : day(iso)
 }
+/** Сколько календарных дней до срока: 0 - срок сегодня, отрицательное - просрочено. */
 export function daysLeft(a) {
   if (!a.due_at || a.closed_at) return null
-  return Math.ceil((new Date(a.due_at).getTime() - Date.now()) / 86400000)
+  return dayDiff(a.due_at)
 }
 export function dueText(a) {
   const n = daysLeft(a)
   if (n === null) return ''
   if (n < 0) return `просрочено на ${-n} дн.`
+  if (a.overdue) return 'просрочено'   // срок был сегодня, но час уже прошел
   if (n === 0) return 'срок сегодня'
+  if (n === 1) return 'срок завтра'
   return `осталось ${n} дн.`
 }
 
@@ -62,9 +71,15 @@ const STATUS_DOT = { new: 'st-new', review: 'st-review', clarify: 'st-wait', in_
 // тип обращения - это знак на плитке; цвет плитки - статус обращения (тот же, что у точки и шкалы этапов)
 const TYPE_ICON = { problem: MessageSquareWarning, proposal: Lightbulb, praise: Heart }
 
-export function StatusPill({ status, label }) {
+// Названия состояний - только из meta.statuses (сервер, models.STATUSES): одно состояние - одно название на всех экранах.
+// Единственное исключение - обращение автору: вместо «Ожидает уточнения» он видит, что ход за ним.
+export const YOUR_TURN = 'Нужен ваш ответ'
+
+/** mine - статус читает автор обращения. */
+export function StatusPill({ status, label, mine = false }) {
   const { meta } = useApp()
-  return <span className="status"><span className={`dot ${STATUS_DOT[status] || ''}`} />{label || meta.statuses[status] || status}</span>
+  const text = label || (mine && status === 'clarify' ? YOUR_TURN : meta.statuses[status]) || status
+  return <span className="status"><span className={`dot ${STATUS_DOT[status] || ''}`} />{text}</span>
 }
 /** Статус чего угодно: <Status dot="ok">Разобрано</Status> */
 export function Status({ dot = '', children }) {
@@ -152,7 +167,8 @@ export function Menu({ trigger, items, up = false, left = false }) {
 
 /* ---------- этапы обращения ---------- */
 const ORDER = { new: 0, review: 1, clarify: 1, in_progress: 2, done: 3 }
-const STAGES = ['Отправлено', 'Рассмотрение', 'В работе', 'Готово']
+// этапы - это статусы по порядку; подписи те же, что у точки статуса
+const STAGES = ['new', 'review', 'in_progress', 'done']
 
 export function Steps({ a, mine }) {
   const { meta } = useApp()
@@ -160,8 +176,8 @@ export function Steps({ a, mine }) {
     const bad = a.status === 'rejected'
     return (
       <div className="steps">
-        <div className="step done"><span className="c"><Check size={14} /></span>Отправлено</div>
-        <div className="step done"><span className="c"><Check size={14} /></span>Рассмотрение</div>
+        <div className="step done"><span className="c"><Check size={14} /></span>{meta.statuses.new}</div>
+        <div className="step done"><span className="c"><Check size={14} /></span>{meta.statuses.review}</div>
         <div className={`step now ${bad ? 'bad' : 'ok'}`}><span className="c">{bad ? <X size={14} /> : <Check size={14} />}</span>{meta.statuses[a.status]}</div>
       </div>
     )
@@ -169,15 +185,15 @@ export function Steps({ a, mine }) {
   const cur = ORDER[a.status] ?? 0
   return (
     <div className="steps">
-      {STAGES.map((label, i) => {
+      {STAGES.map((key, i) => {
         const done = i < cur
         const now = i === cur
         const wait = now && a.status === 'clarify'
         const ok = now && a.status === 'done'
         return (
-          <div key={label} className={`step ${done ? 'done' : ''} ${now ? 'now' : ''} ${wait ? 'wait' : ''} ${ok ? 'ok' : ''}`}>
+          <div key={key} className={`step ${done ? 'done' : ''} ${now ? 'now' : ''} ${wait ? 'wait' : ''} ${ok ? 'ok' : ''}`}>
             <span className="c">{wait ? '?' : (done || ok) && <Check size={14} />}</span>
-            {wait ? (mine ? 'Нужен ваш ответ' : 'Ждем автора') : label}
+            {wait ? (mine ? YOUR_TURN : meta.statuses.clarify) : meta.statuses[key]}
           </div>
         )
       })}
@@ -213,7 +229,7 @@ export function AppealItem({ a, who = 'author', onClick, progress = false }) {
         {progress && <MiniSteps a={a} />}
       </span>
       <span className="side">
-        <StatusPill status={a.status} label={who === 'assignee' && a.status === 'clarify' ? 'Нужен ваш ответ' : undefined} />
+        <StatusPill status={a.status} mine={who === 'assignee'} />
         {a.overdue ? <Overdue a={a} />
           : left !== null && left <= 2 && who === 'author' ? <span className="small muted nowrap">{dueText(a)}</span> : null}
       </span>
