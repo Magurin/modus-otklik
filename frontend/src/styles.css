@@ -127,7 +127,7 @@ label.check { display: flex; gap: var(--s-3); align-items: center; cursor: point
 .sel:hover:not(:disabled) { border-color: var(--n-400); }
 .sel:focus-visible, .sel.open { outline: none; border-color: var(--accent); box-shadow: var(--focus); }
 .sel:disabled { opacity: .5; cursor: default; }
-.sel.empty .sel-value { color: var(--disabled); }
+.sel.sel-empty .sel-value { color: var(--disabled); }
 .sel-value { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sel-chevron { color: var(--muted); transition: transform var(--t-fast) var(--ease); }
 .sel.open .sel-chevron { transform: rotate(180deg); }

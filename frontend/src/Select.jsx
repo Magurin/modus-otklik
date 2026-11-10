@@ -112,7 +112,7 @@ export default function Select({
     <>
       <button
         ref={btnRef} type="button" id={id}
-        className={`sel sel-${size} ${open ? 'open' : ''} ${current ? '' : 'empty'} ${className}`}
+        className={`sel sel-${size} ${open ? 'open' : ''} ${current ? '' : 'sel-empty'} ${className}`}
         style={width ? { width } : undefined}
         onClick={() => (open ? close() : openMenu())} onKeyDown={onKey} disabled={disabled}
         aria-haspopup="listbox" aria-expanded={open} aria-label={ariaLabel}
