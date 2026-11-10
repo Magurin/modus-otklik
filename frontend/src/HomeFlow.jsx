@@ -49,11 +49,16 @@ export default function HomeFlow({ role = 'employee' }) {
       const t = ms / 1000
       energy *= 0.975
       flow += dt * (1 + energy * 5)
-      // точка схода - центр поля ввода; следим за ним, потому что страница прокручивается
+      // точка схода - центр поля ввода в его положении без прокрутки: фон зафиксирован и при скролле не двигается
       if (frame++ % 12 === 0) {
         const el = document.querySelector('.composer')
         const box = cv.getBoundingClientRect()
-        if (el) { const r = el.getBoundingClientRect(); cx = r.left - box.left + r.width / 2; cy = r.top - box.top + r.height / 2; halfW = r.width / 2 }
+        if (el) {
+          const r = el.getBoundingClientRect()
+          let scroll = window.scrollY
+          for (let p = el.parentElement; p; p = p.parentElement) scroll += p.scrollTop
+          cx = r.left - box.left + r.width / 2; cy = r.top + scroll - box.top + r.height / 2; halfW = r.width / 2
+        }
       }
       ctx.clearRect(0, 0, w, h)
       ctx.lineCap = 'round'
