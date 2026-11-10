@@ -8,14 +8,14 @@ import { ErrorNote, Markdown, Spinner, ago, useApp, useLoad } from '../ui.jsx'
  * 1. Что сейчас происходит?  2. Что требует действий?  3. О чем и откуда пишут?  4. Кто отвечает?
  * В каждом блоке один главный факт, остальное - подробности к нему. */
 
-// стадии: чем дальше обращение продвинулось, тем плотнее цвет; янтарь - ждем человека, зеленый - сделано, серый - закрыто без результата
+// стадии: те же цвета, что у точки статуса и шкалы этапов в обращении (tokens.css, --stage-*)
 const STAGE = {
-  new: 'var(--a-200)',
-  review: 'color-mix(in srgb, var(--a-500) 55%, white)',
-  in_progress: 'var(--a-500)',
-  clarify: 'var(--warning-solid)',
-  done: 'var(--success-solid)',
-  rejected: 'var(--n-400)',
+  new: 'var(--stage-1)',
+  review: 'var(--stage-2)',
+  in_progress: 'var(--stage-3)',
+  clarify: 'var(--stage-wait)',
+  done: 'var(--stage-4)',
+  rejected: 'var(--danger-solid)',
   closed: 'var(--n-300)',
 }
 const SHADES = ['var(--a-500)', 'color-mix(in srgb, var(--a-500) 55%, white)', 'var(--a-200)', 'var(--n-300)', 'var(--n-200)']

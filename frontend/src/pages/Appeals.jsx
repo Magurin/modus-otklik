@@ -164,7 +164,7 @@ export function AppealDetail() {
         <div className="card pad stack">
           <div className="row spread wrap">
             <div className="row" style={{ gap: 8 }}>
-              <TypeIcon type={a.type} size={18} />
+              <TypeIcon type={a.type} status={a.status} size={18} />
               <span><b>{meta.types[a.type]}</b> <span className="muted">· {a.number}</span></span>
             </div>
             <div className="row wrap" style={{ gap: '6px 14px' }}>

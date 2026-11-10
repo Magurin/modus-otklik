@@ -163,8 +163,14 @@ label.check { display: flex; gap: var(--s-3); align-items: center; cursor: point
 .dot.warn { background: var(--warning-solid); }
 .dot.ok { background: var(--success-solid); }
 .dot.bad { background: var(--danger-solid); }
-.status.alert { color: var(--danger-text); gap: 5px; }
-.status.warn { color: var(--warning-text); }
+/* статусы обращения: цвета этапов из tokens.css */
+.dot.st-new { background: transparent; box-shadow: inset 0 0 0 2px var(--stage-1); }
+.dot.st-review { background: var(--stage-2); }
+.dot.st-work { background: var(--stage-3); }
+.dot.st-wait { background: var(--stage-wait); }
+.status.alert, .status.warn { gap: 5px; height: 22px; padding: 0 8px; border-radius: var(--r-full); font-size: var(--fs-caption); font-weight: var(--fw-semibold); }
+.status.alert { background: var(--overdue-bg); color: var(--overdue-ink); }
+.status.warn { background: var(--waiting-bg); color: var(--waiting-ink); }
 .chip { display: inline-flex; align-items: center; gap: 5px; color: var(--ink-2); font-size: var(--fs-small); white-space: nowrap; }
 .chip svg { color: var(--muted); }
 .sep-dot::before { content: "·"; margin: 0 7px; color: var(--disabled); }
@@ -182,6 +188,15 @@ label.check { display: flex; gap: var(--s-3); align-items: center; cursor: point
 .avatar.lg { width: 56px; height: 56px; font-size: 18px; }
 /* плитка-значок: всегда нейтральная, различается только рисунком */
 .type-ico { width: 36px; height: 36px; border-radius: var(--r-md); display: grid; place-items: center; flex: none; background: var(--fill); color: var(--n-600); }
+/* плитка типа в цвете статуса: --c задает статус, фон - его светлый тон, значок - затемненный, чтобы читался и на желтом */
+.type-ico[class*=" s-"] { background: color-mix(in srgb, var(--c) 16%, var(--surface)); color: color-mix(in srgb, var(--c) 72%, #000); }
+.type-ico.s-new { --c: var(--stage-1); }
+.type-ico.s-review { --c: var(--stage-2); }
+.type-ico.s-clarify { --c: var(--stage-wait); }
+.type-ico.s-in_progress { --c: var(--stage-3); }
+.type-ico.s-done { --c: var(--stage-4); }
+.type-ico.s-rejected { --c: var(--danger-solid); }
+.type-ico.s-closed { --c: var(--n-400); }
 .type-ico.lg { width: 48px; height: 48px; border-radius: 14px; }
 
 /* сообщение системы пользователю: нейтральный фон, смысл несет значок */
@@ -254,8 +269,12 @@ label.check { display: flex; gap: var(--s-3); align-items: center; cursor: point
 .mini-steps { display: flex; gap: 3px; margin-top: 10px; max-width: 220px; }
 .mini-steps i { height: 3px; flex: 1; border-radius: 2px; background: var(--n-200); }
 .mini-steps i.on { background: var(--accent); }
+.mini-steps i.on:nth-child(1) { background: var(--stage-1); }
+.mini-steps i.on:nth-child(2) { background: var(--stage-2); }
+.mini-steps i.on:nth-child(3) { background: var(--stage-3); }
+.mini-steps i.on:nth-child(4) { background: var(--stage-4); }
 .mini-steps.off i.on { background: var(--n-400); }
-.mini-steps i.cur { background: var(--warning-solid); }
+.mini-steps i.cur { background: var(--stage-wait); }
 
 /* ================= 10. Обращение ================= */
 .steps { display: flex; align-items: flex-start; }
@@ -264,16 +283,25 @@ label.check { display: flex; gap: var(--s-3); align-items: center; cursor: point
 .step::before { content: ""; position: absolute; top: 11px; right: 50%; width: 100%; height: 2px; background: var(--n-200); z-index: 0; }
 .step:first-child::before { display: none; }
 .step .c { width: 24px; height: 24px; border-radius: 50%; background: var(--surface); border: 2px solid var(--n-200); display: grid; place-items: center; z-index: 1; color: #fff; }
-.step.done::before, .step.now::before { background: var(--accent); }
-.step.done .c { background: var(--accent); border-color: var(--accent); }
-.step.now .c { border-color: var(--accent); }
-.step.now .c::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+/* у каждого этапа свой цвет: --sc - цвет этапа, --pc - цвет предыдущего (линия между ними - переход) */
+.step:nth-child(1) { --sc: var(--stage-1); }
+.step:nth-child(2) { --sc: var(--stage-2); --pc: var(--stage-1); }
+.step:nth-child(3) { --sc: var(--stage-3); --pc: var(--stage-2); }
+.step:nth-child(4) { --sc: var(--stage-4); --pc: var(--stage-3); }
+.step.wait { --sc: var(--stage-wait); }
+.step.ok { --sc: var(--success-solid); }
+.step.bad { --sc: var(--danger-solid); }
+.step.done::before, .step.now::before { background: linear-gradient(90deg, var(--pc), var(--sc)); }
+.step.done .c { background: var(--sc); border-color: var(--sc); }
+.step:nth-child(3).done .c { color: var(--stage-3-ink); }
+.step.now .c { border-color: var(--sc); }
+.step.now .c::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--sc); }
 .step.now, .step.done { color: var(--ink); }
 .step.now { font-weight: var(--fw-semibold); }
-.step.wait.now .c { border-color: var(--warning-solid); }
-.step.wait.now .c::after { background: var(--warning-solid); }
-.step.ok.now .c { background: var(--success-solid); border-color: var(--success-solid); }
-.step.bad.now .c { background: var(--danger-solid); border-color: var(--danger-solid); }
+.step.ok.now .c, .step.bad.now .c { background: var(--sc); }
+/* «ждем автора» отличается не цветом, а знаком вопроса */
+.step.wait.now .c { background: var(--sc); font-size: 14px; font-weight: var(--fw-bold, 700); line-height: 1; }
+.step.wait.now .c::after { display: none; }
 .step.ok.now .c::after, .step.bad.now .c::after { display: none; }
 .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--s-4) var(--s-5); }
 .fact .k { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--muted); font-weight: var(--fw-medium); margin-bottom: var(--s-1); }
@@ -290,7 +318,7 @@ label.check { display: flex; gap: var(--s-3); align-items: center; cursor: point
 .msg .body { min-width: 0; flex: 1; }
 .msg .who { font-weight: var(--fw-semibold); }
 .msg .bubble { background: var(--surface-2); border: 1px solid var(--line); border-radius: 4px 12px 12px 12px; padding: 10px 14px; margin-top: 6px; display: inline-block; max-width: 100%; }
-.msg.question .bubble { border-left: 3px solid var(--warning-solid); }
+.msg.question .bubble { border-left: 3px solid var(--stage-wait); }  /* вопрос автору - цвет статуса «ждем автора» */
 .msg.internal .bubble { border-style: dashed; border-color: var(--n-300); }
 .reply { display: flex; gap: var(--s-2); align-items: flex-end; border: 1px solid var(--line-strong); border-radius: 12px; padding: 6px 6px 6px 14px; background: var(--surface);
   transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
@@ -304,12 +332,6 @@ label.check { display: flex; gap: var(--s-3); align-items: center; cursor: point
 .page.home > :not(.home-flow) { position: relative; z-index: 1; }
 .home-hero { margin: var(--s-6) 0 var(--s-5); text-align: center; }
 .home-hero.first { margin-top: 14vh; }   /* у новичка на экране только вопрос и поле - ставим их ближе к центру */
-/* заготовки над полем: нажал - в поле появилось начало фразы */
-.starters { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s-2); margin-bottom: var(--s-2); }
-.starter { height: 36px; padding: 0 var(--s-4); border-radius: var(--r-full); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink);
-  font-size: var(--fs-small); font-weight: var(--fw-medium); white-space: nowrap;
-  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
-.starter:hover { background: var(--fill); border-color: var(--n-400); }
 /* круглая кнопка отправки: одна стрелка */
 .send { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--accent); color: #fff; display: grid; place-items: center; flex: none;
   transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
@@ -362,8 +384,10 @@ label.check { display: flex; gap: var(--s-3); align-items: center; cursor: point
 .flag { display: inline-flex; align-items: center; gap: 6px; height: var(--h-sm); padding: 0 var(--s-3); border-radius: var(--r-full); background: var(--fill);
   font-size: var(--fs-small); font-weight: var(--fw-medium); color: var(--ink-2); }
 a.flag:hover { background: var(--fill-hover); text-decoration: none; }
-.flag.bad { color: var(--danger-text); }
-.flag.warn { color: var(--warning-text); }
+.flag.bad { background: var(--overdue-bg); color: var(--overdue-ink); }
+.flag.warn { background: var(--waiting-bg); color: var(--waiting-ink); }
+a.flag.bad:hover { background: var(--danger-text); }
+a.flag.warn:hover { background: color-mix(in srgb, var(--waiting-bg) 80%, var(--waiting-ink)); }
 .pipe { display: flex; gap: 3px; height: 14px; }
 .pipe i { border-radius: 4px; min-width: 8px; flex-basis: 0; }
 .pipe-legend { display: flex; flex-wrap: wrap; gap: var(--s-2) var(--s-5); font-size: var(--fs-small); line-height: var(--lh-small); color: var(--ink-2); margin-top: var(--s-2); }

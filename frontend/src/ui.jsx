@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { AlertCircle, AlertTriangle, Check, Heart, Lightbulb, Loader2, Users, X } from 'lucide-react'
+import { AlertCircle, AlertTriangle, Check, Heart, Lightbulb, Loader2, MessageSquareWarning, Users, X } from 'lucide-react'
 
 export const Ctx = createContext(null)
 export const useApp = () => useContext(Ctx)
@@ -56,9 +56,11 @@ export function dueText(a) {
 }
 
 /* ---------- статусы и типы ---------- */
-// Цвет несет только точка: кольцо - новое, акцент - в движении, янтарь - ждем человека, зеленый - сделано, красный - отказ.
-const STATUS_DOT = { new: 'ring', review: 'accent', clarify: 'warn', in_progress: 'accent', done: 'ok', rejected: 'bad', closed: '' }
-const TYPE_ICON = { problem: AlertCircle, proposal: Lightbulb, praise: Heart }
+// Цвет несет только точка, и он тот же, что у этапа на шкале: синее кольцо - новое, оранжевый - рассмотрение,
+// желтый - в работе, малиновый - ждем автора, зеленый - сделано, красный - отказ, серый - закрыто.
+const STATUS_DOT = { new: 'st-new', review: 'st-review', clarify: 'st-wait', in_progress: 'st-work', done: 'ok', rejected: 'bad', closed: '' }
+// тип обращения - это знак на плитке; цвет плитки - статус обращения (тот же, что у точки и шкалы этапов)
+const TYPE_ICON = { problem: MessageSquareWarning, proposal: Lightbulb, praise: Heart }
 
 export function StatusPill({ status, label }) {
   const { meta } = useApp()
@@ -68,9 +70,11 @@ export function StatusPill({ status, label }) {
 export function Status({ dot = '', children }) {
   return <span className="status"><span className={`dot ${dot}`} />{children}</span>
 }
-export function TypeIcon({ type, size = 18 }) {
+export function TypeIcon({ type, status, size = 18 }) {
   const Icon = TYPE_ICON[type] || AlertCircle
-  return <span className="type-ico" aria-hidden><Icon size={size} /></span>
+  const { meta } = useApp()
+  const label = meta?.types?.[type]
+  return <span className={`type-ico ${status ? `s-${status}` : ''}`} title={label} aria-hidden={!label}><Icon size={size} strokeWidth={2.2} /></span>
 }
 export function Overdue({ a }) {
   if (!a.overdue) return null
@@ -172,7 +176,7 @@ export function Steps({ a, mine }) {
         const ok = now && a.status === 'done'
         return (
           <div key={label} className={`step ${done ? 'done' : ''} ${now ? 'now' : ''} ${wait ? 'wait' : ''} ${ok ? 'ok' : ''}`}>
-            <span className="c">{(done || ok) && <Check size={14} />}</span>
+            <span className="c">{wait ? '?' : (done || ok) && <Check size={14} />}</span>
             {wait ? (mine ? 'Нужен ваш ответ' : 'Ждем автора') : label}
           </div>
         )
@@ -196,7 +200,7 @@ export function AppealItem({ a, who = 'author', onClick, progress = false }) {
   const left = daysLeft(a)
   return (
     <button className="item" onClick={onClick}>
-      <TypeIcon type={a.type} />
+      <TypeIcon type={a.type} status={a.status} />
       <span className="grow">
         <span className="t">{a.title}</span>
         <span className="meta">

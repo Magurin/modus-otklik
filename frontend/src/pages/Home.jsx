@@ -42,14 +42,6 @@ export default function Home() {
   )
 }
 
-// заготовки: подпись на кнопке -> начало фразы в поле
-const STARTERS = [
-  ['Что-то мешает работе', 'Мешает работе: '],
-  ['Есть идея', 'Предлагаю '],
-  ['Долго ждем ответа', 'Долго ждем ответа от '],
-  ['Поблагодарить коллегу', 'Хочу поблагодарить '],
-]
-
 /** Одно поле вместо формы: человек пишет текст, тип, категорию и ответственного подбирает система. */
 export function Composer() {
   const { meta } = useApp()
@@ -132,12 +124,6 @@ export function Composer() {
 
   return (
     <div className="stack tight">
-      {/* подсказки-заготовки над полем: нажал - в поле появилось начало фразы, осталось дописать */}
-      <div className="starters">
-        {STARTERS.map(([label, start]) => (
-          <button key={label} type="button" className="starter" onClick={() => { setText(start); area.current?.focus() }}>{label}</button>
-        ))}
-      </div>
       <div className="composer">
         <textarea ref={area} value={text} onChange={(e) => setText(e.target.value)} rows={3} aria-label="Текст обращения"
           placeholder="Опишите проблему или идею своими словами"
