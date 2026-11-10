@@ -1,0 +1,12 @@
+backend/.venv
+backend/data
+backend/.env
+backend/.pytest_cache
+frontend/node_modules
+frontend/dist
+demo/*.mp4
+tg
+.claude
+*.MP4
+*.docx
+видео_расшифровка.txt

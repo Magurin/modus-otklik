@@ -1,0 +1,21 @@
+# окружение и сборка
+.venv/
+node_modules/
+dist/
+__pycache__/
+.pytest_cache/
+.vercel/
+
+# данные и секреты локального сервера
+backend/data/
+backend/.env
+*.env.local
+
+# личные инструменты и материалы, не относящиеся к продукту
+.claude/
+tg/
+*.MP4
+*.mp4
+*.docx
+видео_расшифровка.txt
+~$*

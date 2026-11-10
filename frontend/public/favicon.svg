@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" gradientUnits="userSpaceOnUse" x1="6" y1="2" x2="58" y2="62">
+      <stop offset="0" stop-color="#4f78f2"/>
+      <stop offset=".55" stop-color="#3358d4"/>
+      <stop offset="1" stop-color="#1f3594"/>
+    </linearGradient>
+    <radialGradient id="glow" gradientUnits="userSpaceOnUse" cx="14" cy="6" r="46">
+      <stop offset="0" stop-color="#fff" stop-opacity=".28"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="front" gradientUnits="userSpaceOnUse" x1="9" y1="19" x2="47" y2="56">
+      <stop offset="0" stop-color="#fff"/>
+      <stop offset="1" stop-color="#e3eaff"/>
+    </linearGradient>
+  </defs>
+
+  <!-- плашка -->
+  <rect width="64" height="64" rx="15" fill="url(#bg)"/>
+  <rect width="64" height="64" rx="15" fill="url(#glow)"/>
+
+  <!-- отклик: ответная реплика позади -->
+  <path d="M34 8H48A8 8 0 0 1 56 16V23A8 8 0 0 1 53 29.24V35.6A1.2 1.2 0 0 1 51 36.5L44.6 31H34A8 8 0 0 1 26 23V16A8 8 0 0 1 34 8Z" fill="#fff" fill-opacity=".36"/>
+
+  <!-- обращение: реплика сотрудника, обводка цветом фона отделяет ее от ответной -->
+  <path d="M18 19H38A9 9 0 0 1 47 28V39A9 9 0 0 1 38 48H27.5L19.2 55.3A1.3 1.3 0 0 1 17 54.3V47.94A9 9 0 0 1 9 39V28A9 9 0 0 1 18 19Z" fill="url(#front)" stroke="url(#bg)" stroke-width="3" paint-order="stroke"/>
+
+  <!-- голос, сложенный в букву М -->
+  <g fill="none" stroke="url(#bg)" stroke-width="3.6" stroke-linecap="round">
+    <path d="M15.6 26.8V40.2"/>
+    <path d="M21.8 31V40.2"/>
+    <path d="M28 35.4V40.2"/>
+    <path d="M34.2 31V40.2"/>
+    <path d="M40.4 26.8V40.2"/>
+  </g>
+</svg>
