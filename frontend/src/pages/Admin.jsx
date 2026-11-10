@@ -47,18 +47,18 @@ function Routes() {
     <div className="stack">
       <ErrorNote text={err} />
       <div className="card table-wrap">
-        <table className="tbl">
+        <table className="tbl tbl-cards">
           <thead><tr><th>Категория</th><th>Ответственный</th><th>Срок, дней</th><th>Сейчас уйдет к</th><th /></tr></thead>
           <tbody>{rows.map((c) => (
             <tr key={c.id} style={{ opacity: c.active ? 1 : 0.5 }}>
               <td><b>{c.name}</b><div className="small muted">{c.description}</div></td>
-              <td><Select value={c.responsible_id || ''} ariaLabel={`Ответственный: ${c.name}`}
+              <td data-label="Ответственный"><Select value={c.responsible_id || ''} ariaLabel={`Ответственный: ${c.name}`}
                 onChange={(v) => save(c.id, { responsible_id: v ? Number(v) : null })}
                 options={[{ value: '', label: 'Не назначен' },
                   ...fromList(meta.handlers, (h) => h.name, (h) => `${h.position}${h.is_absent ? ' · отсутствует' : ''}`)]} /></td>
-              <td style={{ width: 96 }}><input type="number" min="1" max="365" defaultValue={c.sla_days} aria-label={`Срок: ${c.name}`}
+              <td data-label="Срок, дней" style={{ width: 96 }}><input type="number" min="1" max="365" defaultValue={c.sla_days} aria-label={`Срок: ${c.name}`}
                 onBlur={(e) => Number(e.target.value) !== c.sla_days && save(c.id, { sla_days: Number(e.target.value) })} /></td>
-              <td><b>{c.route || '-'}</b>{c.route_reason && !c.route_reason.startsWith('по категории') && <div className="small muted">{c.route_reason}</div>}</td>
+              <td data-label="Сейчас уйдет к"><b>{c.route || '-'}</b>{c.route_reason && !c.route_reason.startsWith('по категории') && <div className="small muted">{c.route_reason}</div>}</td>
               <td><button className="btn sm ghost" onClick={() => save(c.id, { active: !c.active })}>{c.active ? 'Скрыть' : 'Вернуть'}</button></td>
             </tr>
           ))}</tbody>
@@ -82,7 +82,7 @@ function Users() {
     <div className="stack">
       <ErrorNote text={err} />
       <div className="card table-wrap">
-        <table className="tbl">
+        <table className="tbl tbl-cards">
           <thead><tr><th>Сотрудник</th><th>Роль</th><th>Отсутствует</th><th>Кто замещает</th><th>Мессенджеры</th></tr></thead>
           <tbody>{rows.map((u) => (
             <tr key={u.id}>
@@ -90,16 +90,16 @@ function Users() {
                 <div><b>{u.name}</b><div className="small muted">{u.position} · {u.department}
                   {u.synced?.length > 0 && ` · из ${u.synced.map((s) => SYNCED[s] || s).join(', ')}`}
                   {!u.active && ' · отключен'}</div></div></div></td>
-              <td><Select value={u.role} ariaLabel={`Роль: ${u.name}`} onChange={(v) => save(u.id, { role: v })}
+              <td data-label="Роль"><Select value={u.role} ariaLabel={`Роль: ${u.name}`} onChange={(v) => save(u.id, { role: v })}
                 options={fromMap(meta.roles).map((o) => ({ ...o, hint: ROLE_HINT[o.value] }))} /></td>
-              <td><input type="checkbox" checked={u.is_absent} onChange={(e) => save(u.id, { is_absent: e.target.checked })} aria-label={`Отсутствует: ${u.name}`} /></td>
-              <td>{u.role !== 'employee' && (
+              <td data-label="Отсутствует"><input type="checkbox" checked={u.is_absent} onChange={(e) => save(u.id, { is_absent: e.target.checked })} aria-label={`Отсутствует: ${u.name}`} /></td>
+              <td data-label={u.role !== 'employee' ? 'Кто замещает' : undefined}>{u.role !== 'employee' && (
                 <Select value={u.deputy_id || ''} ariaLabel={`Заместитель: ${u.name}`}
                   onChange={(v) => save(u.id, { deputy_id: v ? Number(v) : null })}
                   options={[{ value: '', label: 'Никто' },
                     ...fromList(meta.handlers.filter((h) => h.id !== u.id), (h) => h.name, (h) => h.position)]} />
               )}</td>
-              <td>{u.telegram || u.max ? <Status dot="ok">{[u.telegram && 'Telegram', u.max && 'MAX'].filter(Boolean).join(', ')}</Status> : <span className="muted">-</span>}</td>
+              <td data-label="Мессенджеры">{u.telegram || u.max ? <Status dot="ok">{[u.telegram && 'Telegram', u.max && 'MAX'].filter(Boolean).join(', ')}</Status> : <span className="muted">-</span>}</td>
             </tr>
           ))}</tbody>
         </table>

@@ -545,7 +545,22 @@ table.tbl td b { font-weight: var(--fw-semibold); }
   .card-head, .card-body { padding-left: var(--s-5); padding-right: var(--s-5); }
   .step { font-size: 10.5px; letter-spacing: -.01em; padding: 0 1px; }
   .ds-type { grid-template-columns: minmax(0, 1fr); }
+  .phone-only { display: block; }
+  table.tbl td:first-child { min-width: 140px; }
+  /* таблицы с полями ввода: каждая строка - карточка, подписи вместо заголовков столбцов */
+  table.tbl-cards, .tbl-cards tbody, .tbl-cards tr, .tbl-cards td { display: block; width: auto !important; }
+  .tbl-cards thead { display: none; }
+  .tbl-cards tr { padding: var(--s-4) var(--s-5); border-bottom: 1px solid var(--line); }
+  .tbl-cards tr:last-child { border-bottom: 0; }
+  .tbl-cards td { border: 0 !important; padding: 0 !important; min-width: 0 !important; }
+  .tbl-cards td + td { margin-top: var(--s-3); }
+  .tbl-cards td:empty { display: none; }
+  .tbl-cards td[data-label]::before { content: attr(data-label); display: block; font-size: var(--fs-caption); line-height: var(--lh-caption);
+    color: var(--muted); font-weight: var(--fw-medium); margin-bottom: var(--s-1); }
+  .tbl-cards td .sel { min-width: 0; width: 100%; }
+  .tbl-cards td input[type="number"] { width: 96px; }
 }
+@media (min-width: 641px) { .phone-only { display: none !important; } }
 /* Telegram Mini App: выход и ссылку «Назад» заменяют средства самого Telegram */
 .tg .no-tg, .tg a.back { display: none !important; }
 @media (prefers-reduced-motion: reduce) {

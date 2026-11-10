@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { CheckCircle2, LogOut, Send, Users } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { CheckCircle2, ChevronRight, LayoutList, LogOut, Send, Settings, Users } from 'lucide-react'
 import { api } from '../api.js'
 import { Avatar, Empty, ErrorNote, Spinner, Status, day, useApp, useLoad } from '../ui.jsx'
 
@@ -39,11 +40,12 @@ function Messenger({ m, onChange }) {
   const unlink = () => api.post(`/me/messengers/${m.key}/unlink`).then(() => { setLink(null); onChange() }).catch((e) => setErr(e.message))
   return (
     <div className="stack tight" style={{ padding: 'var(--s-4) 0', borderBottom: '1px solid var(--line)' }}>
-      <div className="row spread">
-        <div className="row"><span className="type-ico"><Send size={18} /></span>
-          <div><b style={{ fontWeight: 600 }}>{m.title}</b><div className="small muted">{m.bot ? `@${m.bot}` : 'бот не подключен'}</div></div>
+      {/* на узком экране состояние и кнопка переносятся под название, а не вылезают за край */}
+      <div className="row spread wrap">
+        <div className="row" style={{ minWidth: 0 }}><span className="type-ico"><Send size={18} /></span>
+          <div style={{ minWidth: 0 }}><b style={{ fontWeight: 600 }}>{m.title}</b><div className="small muted">{m.bot ? `@${m.bot}` : 'бот не подключен'}</div></div>
         </div>
-        {m.linked ? <div className="row"><Status dot="ok">подключен</Status><button className="btn sm ghost" onClick={unlink}>Отключить</button></div>
+        {m.linked ? <div className="row wrap"><Status dot="ok">подключен</Status><button className="btn sm ghost" onClick={unlink}>Отключить</button></div>
           : m.enabled ? !link && <button className="btn sm" onClick={getCode}>Подключить</button>
             : <Status>недоступен</Status>}
       </div>
@@ -55,6 +57,28 @@ function Messenger({ m, onChange }) {
         </div></div>
       )}
       <ErrorNote text={err} />
+    </div>
+  )
+}
+
+/** Разделы, которым не хватило места в нижней панели телефона (и в Telegram): иначе до них не добраться. */
+function PhoneSections() {
+  const { user } = useApp()
+  if (user.role === 'employee') return null  // у сотрудника все разделы помещаются в панель
+  const links = [
+    ['/all', LayoutList, 'Все обращения'],
+    ['/done', CheckCircle2, 'Что сделано'],
+    ...(user.role === 'admin' ? [['/admin', Settings, 'Настройки']] : []),
+  ]
+  return (
+    <div className="card rows phone-only">
+      {links.map(([to, Icon, label]) => (
+        <Link key={to} to={to} className="item" style={{ alignItems: 'center', color: 'var(--ink)' }}>
+          <span className="type-ico"><Icon size={18} /></span>
+          <span className="grow t">{label}</span>
+          <ChevronRight size={18} className="muted" />
+        </Link>
+      ))}
     </div>
   )
 }
@@ -73,12 +97,15 @@ export function Profile() {
             <div className="small muted">{user.department} · {meta.roles[user.role]} · {user.email}</div>
           </div>
         </div>
-        <div className="card pad">
-          <h2>Мессенджеры</h2>
-          <p className="small muted">Писать боту текстом или голосом и получать ответы</p>
-          <ErrorNote text={error} />
-          {list ? list.map((m) => <Messenger key={m.key} m={m} onChange={reload} />) : <Spinner />}
-        </div>
+        {(!list || list.length > 0 || error) && (
+          <div className="card pad">
+            <h2>Мессенджеры</h2>
+            <p className="small muted">Писать боту текстом или голосом и получать ответы</p>
+            <ErrorNote text={error} />
+            {list ? list.map((m) => <Messenger key={m.key} m={m} onChange={reload} />) : !error && <Spinner />}
+          </div>
+        )}
+        <PhoneSections />
         <div className="no-tg"><button className="btn ghost" onClick={logout}><LogOut size={16} /> Выйти</button></div>
       </div>
     </div>
