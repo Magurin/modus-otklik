@@ -106,7 +106,7 @@ PAGE = 50
 def bitrix_call(method: str, params: dict) -> dict:
     people = [p for p in _people() if not p["fired"]]  # уволенных портал отдает как ACTIVE=false, но фильтром мы их не просим
     ids = {p["key"]: i for i, p in enumerate(people, 1)}
-    dep_ids = {d: i for i, d in enumerate(DEPARTMENTS, 1)}
+    dep_ids = {d: i for i, d in enumerate(DEPARTMENTS, 2)}  # 1 - корень дерева, сама компания (как на настоящем портале)
     if method == "user.get":
         rows = []
         for p in people:
@@ -120,8 +120,9 @@ def bitrix_call(method: str, params: dict) -> dict:
         rows = [r for r in rows if not want or r["USER_TYPE"] == want]
     elif method == "department.get":
         heads = {p["dep"]: ids[p["key"]] for p in people if p["head"]}
-        rows = [{"ID": str(i), "NAME": d, "SORT": i * 10, "PARENT": None if i == 1 else "1",
-                 "UF_HEAD": str(heads.get(d, ""))} for d, i in dep_ids.items()]
+        rows = [{"ID": "1", "NAME": "Модус", "SORT": 500}]  # у корня портал не отдает PARENT и UF_HEAD
+        rows += [{"ID": str(i), "NAME": d, "SORT": 500, "PARENT": "1", "UF_HEAD": str(heads[d])} if d in heads
+                 else {"ID": str(i), "NAME": d, "SORT": 500, "PARENT": "1"} for d, i in dep_ids.items()]
     else:
         return {"error": "ERROR_METHOD_NOT_FOUND", "error_description": "Method not found!"}
     start = int(params.get("start") or 0)

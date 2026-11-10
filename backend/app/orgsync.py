@@ -214,14 +214,17 @@ def fetch_b24() -> Snapshot:
     with client:
         deps = get_all("department.get", {})
         users = get_all("user.get", {"FILTER[USER_TYPE]": "employee"})
-    snap.depts = [Dept(str(d["ID"]), str(d["NAME"]).strip(), str(d["UF_HEAD"]) if d.get("UF_HEAD") else None) for d in deps]
+    # корень дерева без PARENT - сама компания (называется как портал), отделом у нас ее не заводим
+    roots = {str(d["ID"]) for d in deps if not d.get("PARENT")} if len(deps) > 1 else set()
+    snap.depts = [Dept(str(d["ID"]), str(d["NAME"]).strip(), str(d["UF_HEAD"]) if d.get("UF_HEAD") else None)
+                  for d in deps if str(d["ID"]) not in roots]
     for u in users:
         name = " ".join(x for x in (u.get("NAME"), u.get("LAST_NAME")) if x).strip() or u.get("EMAIL", "")
-        dep = (u.get("UF_DEPARTMENT") or [None])[0]
+        dep = next((str(x) for x in u.get("UF_DEPARTMENT") or [] if str(x) not in roots), None)
         active = u.get("ACTIVE") not in (False, "N", "0", 0)
         snap.people.append(Person(ext=str(u["ID"]), name=name, email=(u.get("EMAIL") or "").strip(),
                                   position=(u.get("WORK_POSITION") or "").strip(),
-                                  dept=str(dep) if dep else None, active=active))
+                                  dept=dep, active=active))
     snap.warnings.append("Битрикс24 не передает отпуска и командировки - отметки «отсутствует» не меняются")
     return snap
 
@@ -428,7 +431,7 @@ def apply(db: Session, snap: Snapshot, actor: User | None = None, dry_run: bool 
             changes.append(f"{u.name}: {'; '.join(diff)}")
         if not sp.active:
             if u.active:
-                to_deactivate.append((u, "уволен"))
+                to_deactivate.append((u, "увольнение"))
             continue
         if not u.active:
             warnings.append(f"{u.name}: в источнике работает, у нас отключен - оставили как есть")
@@ -441,7 +444,7 @@ def apply(db: Session, snap: Snapshot, actor: User | None = None, dry_run: bool 
                 changes.append(f"{u.name}: отсутствует - новые обращения уйдут {to}")
             else:
                 stats["absent_off"] += 1
-                changes.append(f"{u.name}: вернулся, обращения снова приходят ему")
+                changes.append(f"{u.name}: снова на месте, обращения приходят напрямую")
 
     # кто был связан с этим источником, но из него пропал. Файл бывает частичным (только отпуска одного отдела),
     # поэтому по файлу отключаем только тех, у кого явно стоит «Уволен»
