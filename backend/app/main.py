@@ -6,12 +6,12 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import bots, mail, workflow
+from . import bots, mail, mocks, orgsync, workflow
 from .api import router
 from .config import BACKEND_DIR, settings
 from sqlalchemy import select
@@ -32,6 +32,8 @@ def _deadline_loop() -> None:
                 if n:
                     log.info("Эскалировано просроченных обращений: %s", n)
                 bots.daily(db)
+            with session_scope() as db:
+                orgsync.maybe_auto(db)
         except Exception:
             log.exception("Контроль сроков")
         time.sleep(300)
@@ -54,6 +56,8 @@ app = FastAPI(title="Модус.Отклик - обратная связь со�
 app.add_middleware(CORSMiddleware, allow_origins=["http://127.0.0.1:5180", "http://localhost:5180"],
                    allow_methods=["*"], allow_headers=["*"])
 app.include_router(router)
+if settings.mocks:  # эмуляторы 1С и Битрикс24: можно открыть в браузере или указать их адрес в ONEC_ODATA_URL / BITRIX_WEBHOOK_URL
+    app.include_router(mocks.router)
 
 # собранный фронтенд раздаем тем же сервером: для запуска достаточно одного процесса
 DIST = BACKEND_DIR.parent / "frontend" / "dist"
@@ -62,5 +66,7 @@ if DIST.exists():
 
     @app.get("/{path:path}", include_in_schema=False)
     def spa(path: str):
+        if path.startswith("api/"):  # неизвестный адрес API - ошибка JSON, а не страница фронтенда
+            raise HTTPException(404, "Нет такого адреса API - возможно, сервер запущен со старой версией")
         f = DIST / path
         return FileResponse(f if path and f.is_file() and DIST in f.resolve().parents else DIST / "index.html")

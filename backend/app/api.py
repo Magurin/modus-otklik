@@ -12,11 +12,11 @@ from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from . import ai, bots, mail, meetings, workflow
+from . import ai, bots, mail, meetings, orgsync, workflow
 from .config import UPLOAD_DIR, settings
 from .db import get_db
 from .models import (FINAL, PRIORITIES, ROLES, SOURCES, STATUSES, TYPES, Appeal, Attachment, Category, Department,
-                     Digest, Event, Meeting, MeetingItem, Notification, User, now)
+                     Digest, Event, Meeting, MeetingItem, Notification, OrgSync, User, now)
 from .security import admin_only, check_init_data, check_password, current_user, handler, make_token, overseer
 
 router = APIRouter(prefix="/api")
@@ -43,7 +43,8 @@ def user_brief(u: User | None) -> dict | None:
 
 def user_full(u: User) -> dict:
     return {**user_brief(u), "email": u.email, "department_id": u.department_id, "deputy_id": u.deputy_id,
-            "telegram": bool(u.tg_chat_id), "max": bool(u.max_user_id), "active": u.active, "role_label": ROLES[u.role]}
+            "telegram": bool(u.tg_chat_id), "max": bool(u.max_user_id), "active": u.active, "role_label": ROLES[u.role],
+            "synced": sorted(u.ext_ids or {})}
 
 
 def author_view(a: Appeal, viewer: User) -> dict:
@@ -950,3 +951,38 @@ def simulate_email(body: EmailIn, user: User = Depends(admin_only), db: Session 
     a = mail.intake(db, body.sender, body.subject, body.body)
     db.commit()
     return appeal_row(a, user)
+
+
+# ---------- оргструктура из 1С, Битрикс24, файла ----------
+
+@router.get("/admin/org")
+def org_state(user: User = Depends(admin_only), db: Session = Depends(get_db)):
+    runs = db.scalars(select(OrgSync).order_by(OrgSync.id.desc()).limit(15))
+    linked = Counter(k for u in db.scalars(select(User).where(User.active)) for k in (u.ext_ids or {}))
+    return {**orgsync.status(), "linked": linked, "template": orgsync.TEMPLATE.format(
+                until=(now() + timedelta(days=10)).strftime("%d.%m.%Y")),
+            "runs": [{"id": r.id, "source": r.source, "label": orgsync.SOURCES[r.source], "ok": r.ok, "stats": r.stats,
+                      "error": r.error, "changes": r.changes[:30], "actor": r.actor.name if r.actor else "по расписанию",
+                      "created_at": iso(r.created_at)} for r in runs]}
+
+
+@router.post("/admin/org/sync/{source}")
+def org_sync(source: str, apply: bool = False, user: User = Depends(admin_only), db: Session = Depends(get_db)):
+    if source not in ("1c", "b24"):
+        bad("Неизвестный источник", 404)
+    try:
+        return orgsync.run(db, source, user, dry_run=not apply)
+    except orgsync.SyncError as e:
+        bad(str(e))
+
+
+@router.post("/admin/org/import")
+async def org_import(file: UploadFile = File(...), apply: bool = Form(False), user: User = Depends(admin_only),
+                     db: Session = Depends(get_db)):
+    data = await file.read()
+    if len(data) > 5 * 1024 * 1024:
+        bad("Файл больше 5 МБ")
+    try:
+        return orgsync.apply(db, orgsync.parse_file(file.filename or "", data), user, dry_run=not apply)
+    except orgsync.SyncError as e:
+        bad(str(e))

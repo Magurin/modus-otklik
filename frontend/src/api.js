@@ -38,11 +38,14 @@ async function request(method, path, body) {
   return res
 }
 
+// Сервер вместо JSON вернул страницу (старая версия бэкенда без этого адреса) - понятная ошибка вместо «Unexpected token <»
+const json = (r) => r.json().catch(() => { throw new Error('Сервер ответил не данными, а страницей - перезапустите бэкенд') })
+
 export const api = {
-  get: (p) => request('GET', p).then((r) => r.json()),
-  post: (p, b) => request('POST', p, b ?? {}).then((r) => r.json()),
-  patch: (p, b) => request('PATCH', p, b).then((r) => r.json()),
-  form: (p, fd) => request('POST', p, fd).then((r) => r.json()),
+  get: (p) => request('GET', p).then(json),
+  post: (p, b) => request('POST', p, b ?? {}).then(json),
+  patch: (p, b) => request('PATCH', p, b).then(json),
+  form: (p, fd) => request('POST', p, fd).then(json),
   async download(id, filename) {
     const r = await request('GET', `/attachments/${id}`)
     const url = URL.createObjectURL(await r.blob())

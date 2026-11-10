@@ -6,8 +6,8 @@ export default defineConfig({
   cacheDir: 'D:/Ackrate/.tool-cache/tmp/vite-modus',
   server: {
     host: '127.0.0.1',
-    port: 5180,
+    port: Number(process.env.VITE_PORT || 5180),
     strictPort: true,
-    proxy: { '/api': 'http://127.0.0.1:8010' },
+    proxy: { '/api': process.env.VITE_API || 'http://127.0.0.1:8010' },
   },
 })

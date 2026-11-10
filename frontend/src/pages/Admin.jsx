@@ -4,7 +4,9 @@ import { CheckCircle2, Mail, Mic, Plus, Send, Sparkles } from 'lucide-react'
 import { api } from '../api.js'
 import { Avatar, ErrorNote, Spinner, Status, useApp, useLoad } from '../ui.jsx'
 import Select, { fromList, fromMap } from '../Select.jsx'
-import DesignSystem from './DesignSystem.jsx'
+import Integrations from './Integrations.jsx'
+
+const SYNCED = { '1c': '1С', b24: 'Битрикс24', file: 'файл' }
 
 const ROLE_HINT = {
   employee: 'пишет обращения', manager: 'разбирает свои категории', director: 'видит все', admin: 'настраивает систему',
@@ -16,14 +18,14 @@ export default function Admin() {
     <div className="page wide">
       <div className="head"><h1>Настройки</h1></div>
       <div className="tabs">
-        {[['routes', 'Кто что разбирает'], ['users', 'Сотрудники'], ['channels', 'Каналы'], ['design', 'Дизайн-система']].map(([k, l]) => (
+        {[['routes', 'Кто что разбирает'], ['users', 'Сотрудники'], ['org', '1С и Битрикс24'], ['channels', 'Каналы']].map(([k, l]) => (
           <button key={k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
       {tab === 'routes' && <Routes />}
       {tab === 'users' && <Users />}
+      {tab === 'org' && <Integrations />}
       {tab === 'channels' && <Channels />}
-      {tab === 'design' && <DesignSystem />}
     </div>
   )
 }
@@ -83,7 +85,9 @@ function Users() {
           <tbody>{rows.map((u) => (
             <tr key={u.id}>
               <td><div className="row"><Avatar name={u.name} role={u.role} />
-                <div><b>{u.name}</b><div className="small muted">{u.position} · {u.department}</div></div></div></td>
+                <div><b>{u.name}</b><div className="small muted">{u.position} · {u.department}
+                  {u.synced?.length > 0 && ` · из ${u.synced.map((s) => SYNCED[s] || s).join(', ')}`}
+                  {!u.active && ' · отключен'}</div></div></div></td>
               <td><Select value={u.role} ariaLabel={`Роль: ${u.name}`} onChange={(v) => save(u.id, { role: v })}
                 options={fromMap(meta.roles).map((o) => ({ ...o, hint: ROLE_HINT[o.value] }))} /></td>
               <td><input type="checkbox" checked={u.is_absent} onChange={(e) => save(u.id, { is_absent: e.target.checked })} aria-label={`Отсутствует: ${u.name}`} /></td>
