@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 418" role="img" aria-labelledby="t d">
+  <title id="t">Путь обращения в Модус.Отклик</title>
+  <desc id="d">Веб-форма, Telegram и MAX, почта и запись совещания сходятся в единую регистрацию. Дальше: ИИ-разбор, маршрут с замещением, работа со сроком и историей, результат и аналитика.</desc>
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0 0.8 L10 5 L0 9.2 z" fill="#3358d4"/>
+    </marker>
+    <style>
+      text { font-family: Inter, 'Segoe UI', system-ui, -apple-system, Roboto, 'Helvetica Neue', Arial, sans-serif; }
+      .cap { font-size: 11.5px; font-weight: 600; letter-spacing: 1.3px; fill: #72726b; }
+      .box { fill: #ffffff; stroke: #e8e8e4; }
+      .h { font-size: 15.5px; font-weight: 600; fill: #171716; }
+      .s { font-size: 12.5px; fill: #72726b; }
+      .t { font-size: 16.5px; font-weight: 600; fill: #171716; }
+      .b { font-size: 13.5px; fill: #585853; }
+      .n { font-size: 12.5px; font-weight: 700; fill: #ffffff; text-anchor: middle; }
+      .in { fill: none; stroke: #3358d4; stroke-width: 1.6; stroke-opacity: .55; }
+      .go { fill: none; stroke: #3358d4; stroke-width: 1.8; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="1039" height="417" rx="22" fill="#f6f6f4" stroke="#e8e8e4"/>
+
+  <text class="cap" x="38" y="44">ОТКУДА ПРИХОДИТ</text>
+  <text class="cap" x="344" y="44">ЧТО ПРОИСХОДИТ ДАЛЬШЕ</text>
+
+  <!-- каналы -->
+  <g>
+    <rect class="box" x="36" y="62" width="240" height="66" rx="16"/>
+    <circle cx="58" cy="95" r="5" fill="#3358d4"/>
+    <text class="h" x="76" y="90">Веб-форма</text>
+    <text class="s" x="76" y="110">одно поле вместо анкеты</text>
+
+    <rect class="box" x="36" y="145" width="240" height="66" rx="16"/>
+    <circle cx="58" cy="178" r="5" fill="#3358d4"/>
+    <text class="h" x="76" y="173">Telegram и MAX</text>
+    <text class="s" x="76" y="193">текст, голос, фото, файлы</text>
+
+    <rect class="box" x="36" y="228" width="240" height="66" rx="16"/>
+    <circle cx="58" cy="261" r="5" fill="#3358d4"/>
+    <text class="h" x="76" y="256">Почта</text>
+    <text class="s" x="76" y="276">письмо на общий ящик</text>
+
+    <rect class="box" x="36" y="311" width="240" height="66" rx="16"/>
+    <circle cx="58" cy="344" r="5" fill="#3358d4"/>
+    <text class="h" x="76" y="339">Запись совещания</text>
+    <text class="s" x="76" y="359">пункты подтверждает человек</text>
+  </g>
+
+  <!-- каналы сходятся в регистрацию -->
+  <path class="in" marker-end="url(#ah)" d="M276 95 C 312 95, 306 114, 336 114"/>
+  <path class="in" marker-end="url(#ah)" d="M276 178 C 312 178, 306 126, 336 126"/>
+  <path class="in" marker-end="url(#ah)" d="M276 261 C 318 261, 300 138, 336 138"/>
+  <path class="in" marker-end="url(#ah)" d="M276 344 C 324 344, 296 150, 336 150"/>
+
+  <!-- шаги -->
+  <g>
+    <rect class="box" x="342" y="62" width="204" height="140" rx="16"/>
+    <circle cx="370" cy="92" r="12" fill="#3358d4"/>
+    <text class="n" x="370" y="96.5">1</text>
+    <text class="t" x="392" y="98">Регистрация</text>
+    <text class="b" x="362" y="130">единая точка входа</text>
+    <text class="b" x="362" y="152">для всех каналов:</text>
+    <text class="b" x="362" y="174">номер, срок, история</text>
+
+    <rect class="box" x="572" y="62" width="204" height="140" rx="16"/>
+    <circle cx="600" cy="92" r="12" fill="#3358d4"/>
+    <text class="n" x="600" y="96.5">2</text>
+    <text class="t" x="622" y="98">ИИ-разбор</text>
+    <text class="b" x="592" y="130">тип, категория,</text>
+    <text class="b" x="592" y="152">приоритет, заголовок,</text>
+    <text class="b" x="592" y="174">вопрос автору</text>
+
+    <rect class="box" x="802" y="62" width="204" height="140" rx="16"/>
+    <circle cx="830" cy="92" r="12" fill="#f0812b"/>
+    <text class="n" x="830" y="96.5">3</text>
+    <text class="t" x="852" y="98">Маршрут</text>
+    <text class="b" x="822" y="130">ответственный →</text>
+    <text class="b" x="822" y="152">заместитель →</text>
+    <text class="b" x="822" y="174">руководитель</text>
+
+    <rect class="box" x="342" y="237" width="204" height="140" rx="16"/>
+    <circle cx="370" cy="267" r="12" fill="#efc02a"/>
+    <text class="n" x="370" y="271.5" style="fill:#5c4500">4</text>
+    <text class="t" x="392" y="273">Работа</text>
+    <text class="b" x="362" y="305">статусы и уточнения,</text>
+    <text class="b" x="362" y="327">уведомления,</text>
+    <text class="b" x="362" y="349">эскалация просрочки</text>
+
+    <rect class="box" x="572" y="237" width="204" height="140" rx="16"/>
+    <circle cx="600" cy="267" r="12" fill="#2f9e68"/>
+    <text class="n" x="600" y="271.5">5</text>
+    <text class="t" x="622" y="273">Результат</text>
+    <text class="b" x="592" y="305">итог или отказ</text>
+    <text class="b" x="592" y="327">с причиной,</text>
+    <text class="b" x="592" y="349">оценка автора</text>
+
+    <rect class="box" x="802" y="237" width="204" height="140" rx="16"/>
+    <circle cx="830" cy="267" r="12" fill="#585853"/>
+    <text class="n" x="830" y="271.5">6</text>
+    <text class="t" x="852" y="273">Аналитика</text>
+    <text class="b" x="822" y="305">повторяющиеся темы,</text>
+    <text class="b" x="822" y="327">сводка директору,</text>
+    <text class="b" x="822" y="349">лента «Что сделано»</text>
+  </g>
+
+  <!-- переходы между шагами -->
+  <path class="go" marker-end="url(#ah)" d="M550 132 H 566"/>
+  <path class="go" marker-end="url(#ah)" d="M780 132 H 796"/>
+  <path class="go" marker-end="url(#ah)" d="M904 202 V 209.5 Q 904 219.5 894 219.5 H 454 Q 444 219.5 444 229.5 V 231"/>
+  <path class="go" marker-end="url(#ah)" d="M550 307 H 566"/>
+  <path class="go" marker-end="url(#ah)" d="M780 307 H 796"/>
+</svg>
