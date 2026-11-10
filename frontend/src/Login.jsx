@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { BarChart3, ChevronRight, Inbox, PenLine, Search, Settings } from 'lucide-react'
+import { BarChart3, ChevronRight, Inbox, PenLine, Search, Send, Settings } from 'lucide-react'
 import { api } from './api.js'
 import FlowLines from './FlowLines.jsx'
 import { Avatar, ErrorNote, Spinner } from './ui.jsx'
@@ -13,7 +13,7 @@ const GROUPS = [
 ]
 
 /** Вход: одна карточка с тремя способами - по роли (демо), под конкретным человеком (демо) и по почте. */
-export default function Login({ onDone }) {
+export default function Login({ onDone, telegram }) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -43,6 +43,11 @@ export default function Login({ onDone }) {
           <div className="brand"><img src="/favicon.svg" alt="" /><h1>Модус.Отклик</h1></div>
           <p className="ink2">Проблемы и идеи сотрудников - в одном месте</p>
         </div>
+        {telegram && (
+          <div className="note"><Send size={18} /><div>
+            <b>Войдите один раз</b>Этот Telegram привяжется к вашей учетной записи: дальше приложение будет открываться без пароля, а бот - писать вам о ваших обращениях.
+          </div></div>
+        )}
         {/* класс roles - точка, в которую сходятся линии фона (FlowLines) */}
         <div className="roles login-card">
           {hasDemo && (

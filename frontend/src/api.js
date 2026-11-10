@@ -33,7 +33,7 @@ async function request(method, path, body) {
       if (typeof d.detail === 'string') msg = d.detail
       else if (Array.isArray(d.detail)) msg = 'Проверьте заполнение полей'
     } catch { /* не JSON */ }
-    throw new Error(msg)
+    throw Object.assign(new Error(msg), { status: res.status })
   }
   return res
 }

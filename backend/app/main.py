@@ -31,6 +31,7 @@ def _deadline_loop() -> None:
                 n = workflow.check_deadlines(db)
                 if n:
                     log.info("Эскалировано просроченных обращений: %s", n)
+                bots.daily(db)
         except Exception:
             log.exception("Контроль сроков")
         time.sleep(300)

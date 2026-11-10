@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import {
-  ArrowLeft, ArrowRightLeft, Check, CheckCircle2, EyeOff, HelpCircle, Inbox, Lock, MoreHorizontal, Paperclip, Pencil, RotateCcw, Search,
-  Send, SlidersHorizontal, ThumbsUp, Users, X, XCircle,
+  ArrowLeft, ArrowRightLeft, ArrowUp, Check, CheckCircle2, EyeOff, HelpCircle, Inbox, Lock, MoreHorizontal, Paperclip, Pencil, RotateCcw, Search,
+  SlidersHorizontal, ThumbsUp, Users, X, XCircle,
 } from 'lucide-react'
 import { api, qs } from '../api.js'
 import Select, { fromList, fromMap } from '../Select.jsx'
@@ -113,8 +113,10 @@ function Event({ e, a, full }) {
   if (e.kind === 'escalated') return <div className="sys red"><span>{e.text}{time}</span></div>
   if (e.kind === 'assigned' || e.kind === 'edited' || e.kind === 'supported') return <div className="sys"><span>{e.text}{time}</span></div>
   if (e.kind === 'status' && !e.text) return <div className="sys"><span>{e.actor}: «{meta.statuses[e.data.to]}»{time}</span></div>
+  if (e.kind === 'rated' && !e.text) return <div className="sys"><span>{e.actor} подтверждает: вопрос решен{time}</span></div>
   const head = e.kind === 'status' ? <> · «{meta.statuses[e.data.to]}»</>
-    : e.kind === 'question' ? ' просит уточнить' : e.kind === 'answer' ? ' отвечает' : ''
+    : e.kind === 'question' ? ' просит уточнить' : e.kind === 'answer' ? ' отвечает'
+      : e.kind === 'rated' ? (e.data.ok ? ' подтверждает: вопрос решен' : ' сообщает: вопрос не решен') : ''
   return (
     <div className={`msg ${e.kind} ${e.internal ? 'internal' : ''}`}>
       <Avatar name={e.actor} size="sm" role={e.actor_role || ''} />
@@ -188,6 +190,15 @@ export function AppealDetail() {
               <div><b>{a.status === 'rejected' ? 'Отклонено' : a.status === 'done' ? 'Что сделано' : 'Итог'}</b><span className="pre">{a.resolution}</span></div>
             </div>
           )}
+          {a.can.rate && (
+            <div className="note"><HelpCircle size={18} /><div>
+              <b>Вопрос решен?</b>Если нет - обращение вернется в работу.
+              <div className="row" style={{ marginTop: 10 }}>
+                <button className="btn sm primary" onClick={() => act(api.post(`/appeals/${a.id}/rate`, { ok: true }))}><Check size={15} /> Да, спасибо</button>
+                <button className="btn sm" onClick={() => open('reopen')}>Нет, не решен</button>
+              </div>
+            </div></div>
+          )}
           {a.open_question && a.can.answer && (
             <div className="note amber"><HelpCircle size={18} /><div><b>Нужен ваш ответ</b>{a.open_question.text}</div></div>
           )}
@@ -236,12 +247,12 @@ export function AppealDetail() {
               <div className="reply">
                 <textarea rows={1} value={msg} onChange={(e) => { setMsg(e.target.value); e.target.style.height = 'auto'; e.target.style.height = `${Math.min(e.target.scrollHeight, 200)}px` }}
                   placeholder={answering ? 'Ваш ответ' : internal ? 'Заметка для своих - автор не увидит' : a.can.handle ? 'Написать автору' : 'Написать комментарий'}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) send() }} aria-label="Сообщение" />
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); send() } }} aria-label="Сообщение" />
                 {a.can.handle && (
                   <button className={`btn ghost icon sm ${internal ? 'on' : ''}`} onClick={() => setInternal(!internal)} aria-pressed={internal}
                     title="Заметка для своих: автор не увидит"><Lock size={16} /></button>
                 )}
-                <button className="btn primary icon" disabled={!msg.trim()} onClick={send} aria-label="Отправить"><Send size={17} /></button>
+                <button className="send" disabled={!msg.trim()} onClick={send} aria-label="Отправить" title="Отправить - Enter"><ArrowUp size={19} /></button>
               </div>
               {!modal && <ErrorNote text={err} />}
             </>
@@ -267,6 +278,8 @@ export function AppealDetail() {
         onOk={(text) => act(api.post(`/appeals/${a.id}/status`, { status: modal.status, text }))} />}
       {modal?.kind === 'clarify' && <TextModal title="Вопрос автору" placeholder="Что нужно уточнить?" ok="Спросить" err={err}
         onClose={() => setModal(null)} onOk={(text) => act(api.post(`/appeals/${a.id}/clarify`, { text }))} />}
+      {modal?.kind === 'reopen' && <TextModal title="Что осталось нерешенным?" placeholder="Ответственный увидит этот текст" ok="Вернуть в работу" err={err}
+        onClose={() => setModal(null)} onOk={(text) => act(api.post(`/appeals/${a.id}/rate`, { ok: false, text }))} />}
       {modal?.kind === 'assign' && <AssignModal a={a} err={err} onClose={() => setModal(null)}
         onOk={(uid) => act(api.post(`/appeals/${a.id}/assign`, { user_id: Number(uid) }))} />}
       {modal?.kind === 'edit' && <EditModal a={a} err={err} onClose={() => setModal(null)}

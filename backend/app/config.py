@@ -63,6 +63,10 @@ class Settings:
 
     # Каналы приема
     telegram_token = _env("TELEGRAM_BOT_TOKEN")
+    # Telegram Mini App: публичный https-адрес этого приложения. Без него бот работает только диалогом
+    webapp_url = (_env("WEBAPP_URL") or (app_url if app_url.startswith("https://") else "")).rstrip("/")
+    tz_hours = int(_env("TZ_OFFSET_HOURS", "5"))     # часовой пояс компании относительно UTC: даты в боте и время сводки
+    digest_hour = int(_env("DIGEST_HOUR", "9"))      # во сколько по местному времени бот присылает сводку ответственным
     max_token = _env("MAX_BOT_TOKEN")
     max_api_url = _env("MAX_API_URL", "https://platform-api2.max.ru").rstrip("/")
     max_api_fallback = "https://platform-api.max.ru"   # прежний домен: работает с обычными сертификатами
@@ -71,6 +75,15 @@ class Settings:
     imap_user = _env("IMAP_USER")
     imap_password = _env("IMAP_PASSWORD")
     imap_folder = _env("IMAP_FOLDER", "INBOX")
+
+    # Оргструктура из внешних систем. Адрес не задан - работает встроенный эмулятор (тот же HTTP-клиент, подмена транспорта)
+    onec_odata_url = _env("ONEC_ODATA_URL").rstrip("/")      # .../<база>/odata/standard.odata
+    onec_user = _env("ONEC_USER")
+    onec_password = _env("ONEC_PASSWORD")
+    bitrix_webhook = _env("BITRIX_WEBHOOK_URL").rstrip("/")  # https://<портал>.bitrix24.ru/rest/<id>/<ключ>
+    org_sync_source = _env("ORG_SYNC_SOURCE")                # 1c или b24 - синхронизировать по расписанию
+    org_sync_hours = int(_env("ORG_SYNC_HOURS", "6"))
+    mocks = _env("MOCKS", "1") == "1"                        # отдавать эмуляторы 1С и Битрикс24 по /mock/...
 
     serverless = SERVERLESS
     background = _env("BACKGROUND", "0" if SERVERLESS else "1") == "1"  # фоновые задачи: бот, почта, контроль сроков

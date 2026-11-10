@@ -35,6 +35,7 @@ class Department(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(120), unique=True)
     head_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", use_alter=True), nullable=True)
+    ext_ids: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # id во внешних системах: {"1c": guid, "b24": "5"}
 
 
 class User(Base):
@@ -52,7 +53,10 @@ class User(Base):
     max_user_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
     tg_link_code: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)   # код привязки любого мессенджера
     tg_pending_appeal_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # ждем ответ на уточнение в боте
+    bot_state: Mapped[dict | None] = mapped_column(JSON, nullable=True)   # незавершенный шаг диалога с ботом: черновик, ожидание текста
+    bot_prefs: Mapped[dict | None] = mapped_column(JSON, nullable=True)   # настройки уведомлений в боте и отметка об отправленной сводке
     active: Mapped[bool] = mapped_column(Boolean, default=True)
+    ext_ids: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # id во внешних системах: 1С, Битрикс24, файл выгрузки
 
     department: Mapped[Department | None] = relationship(foreign_keys=[department_id])
     deputy: Mapped["User | None"] = relationship(remote_side=[id], foreign_keys=[deputy_id])
@@ -97,6 +101,8 @@ class Appeal(Base):
     resolution: Mapped[str] = mapped_column(Text, default="")  # итог: решение или мотивированный отказ
     ai_summary: Mapped[str] = mapped_column(Text, default="")
     ai_filled: Mapped[bool] = mapped_column(Boolean, default=False)  # тип/категорию определил ИИ, человек не проверял
+    rating: Mapped[int | None] = mapped_column(Integer, nullable=True)  # оценка автора после «Реализовано»: 1 - решено, -1 - нет
+    reminded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # когда напомнили о подходящем сроке
 
     author: Mapped[User | None] = relationship(foreign_keys=[author_id])
     assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id])
@@ -113,7 +119,7 @@ class Event(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     appeal_id: Mapped[int] = mapped_column(ForeignKey("appeals.id"), index=True)
     actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
-    kind: Mapped[str] = mapped_column(String(30))  # created, routed, status, comment, question, answer, assigned, edited, escalated, supported
+    kind: Mapped[str] = mapped_column(String(30))  # created, routed, status, comment, question, answer, assigned, edited, escalated, supported, rated
     text: Mapped[str] = mapped_column(Text, default="")
     data: Mapped[dict] = mapped_column(JSON, default=dict)
     internal: Mapped[bool] = mapped_column(Boolean, default=False)  # видно только тем, кто рассматривает
@@ -186,6 +192,21 @@ class MeetingItem(Base):
     appeal_id: Mapped[int | None] = mapped_column(ForeignKey("appeals.id"), nullable=True)
 
     category: Mapped[Category | None] = relationship()
+
+
+class OrgSync(Base):
+    """Журнал синхронизаций оргструктуры с внешними системами (только примененные, не предпросмотр)."""
+    __tablename__ = "org_syncs"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    source: Mapped[str] = mapped_column(String(20))  # 1c, b24, file
+    actor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)  # пусто - по расписанию
+    ok: Mapped[bool] = mapped_column(Boolean, default=True)
+    stats: Mapped[dict] = mapped_column(JSON, default=dict)
+    changes: Mapped[list] = mapped_column(JSON, default=list)
+    error: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=now)
+
+    actor: Mapped[User | None] = relationship()
 
 
 class Digest(Base):

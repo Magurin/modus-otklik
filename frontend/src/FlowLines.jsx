@@ -34,7 +34,7 @@ export default function FlowLines() {
     const cv = ref.current
     const ctx = cv.getContext('2d')
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    let w = 0, h = 0, raf = 0, frame = 0, focusY = 300, halfW = 200
+    let w = 0, h = 0, raf = 0, frame = 0, focusY = 300, halfW = 200, offY = 155
     const ptr = { x: 0, y: 0, tx: 0, ty: 0 }
 
     const resize = () => {
@@ -50,10 +50,15 @@ export default function FlowLines() {
       const t = ms / 1000
       ptr.x += (ptr.tx - ptr.x) * 0.04; ptr.y += (ptr.ty - ptr.y) * 0.04
       const cx = w / 2 + ptr.x * 14
-      // точка схода - центр того, что сейчас на экране: плитки ролей или форма
+      // точка схода привязана к верху карточки и к центру вкладки «Роль»: при переключении
+      // на «Человек» или «Почта» высота карточки меняется, но линии остаются на месте
       if (frame++ % 30 === 0) {
         const el = document.querySelector('.login .roles, .login form')
-        if (el) { const r = el.getBoundingClientRect(); focusY = r.top + r.height / 2; halfW = r.width / 2 }
+        if (el) {
+          const r = el.getBoundingClientRect()
+          if (el.querySelector('.role-mark')) offY = r.height / 2
+          focusY = r.top + offY; halfW = r.width / 2
+        }
       }
       const cy = focusY + ptr.y * 10
       ctx.clearRect(0, 0, w, h)

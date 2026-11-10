@@ -299,20 +299,32 @@ label.check { display: flex; gap: var(--s-3); align-items: center; cursor: point
 .reply textarea:focus { box-shadow: none; }
 
 /* ================= 11. Главное поле ================= */
-.hero { margin-bottom: var(--s-5); }
-.composer { background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-xl); box-shadow: var(--shadow-1); overflow: hidden;
+/* фон главной: линии стекаются к полю ввода (HomeFlow). Лежит под содержимым и не ловит клики */
+.home-flow { position: fixed; top: 0; left: var(--nav-w); width: calc(100% - var(--nav-w)); height: 100%; pointer-events: none; z-index: 0; }
+.page.home > :not(.home-flow) { position: relative; z-index: 1; }
+.home-hero { margin: var(--s-6) 0 var(--s-5); text-align: center; }
+.home-hero.first { margin-top: 14vh; }   /* у новичка на экране только вопрос и поле - ставим их ближе к центру */
+/* заготовки над полем: нажал - в поле появилось начало фразы */
+.starters { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--s-2); margin-bottom: var(--s-2); }
+.starter { height: 36px; padding: 0 var(--s-4); border-radius: var(--r-full); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink);
+  font-size: var(--fs-small); font-weight: var(--fw-medium); white-space: nowrap;
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease); }
+.starter:hover { background: var(--fill); border-color: var(--n-400); }
+/* круглая кнопка отправки: одна стрелка */
+.send { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--accent); color: #fff; display: grid; place-items: center; flex: none;
+  transition: background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.send:hover:not(:disabled) { background: var(--accent-hover); transform: translateY(-1px); }
+.send:disabled { background: var(--n-200); color: var(--n-0); cursor: default; }
+.composer { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 22px; box-shadow: var(--shadow-2); overflow: hidden;
   transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease); }
 .composer:focus-within { border-color: var(--accent); box-shadow: var(--focus); }
-.composer textarea { border: 0; box-shadow: none; padding: var(--s-5) var(--s-6) var(--s-2); font-size: 17px; line-height: 26px; min-height: 92px; resize: none; border-radius: 0; display: block; }
+.composer textarea { border: 0; box-shadow: none; padding: var(--s-5) var(--s-6) var(--s-2); font-size: 17px; line-height: 26px; min-height: 104px; resize: none; border-radius: 0; display: block; }
 .composer textarea:focus { box-shadow: none; }
 .composer textarea.second { font-size: var(--fs-body); line-height: var(--lh-body); min-height: 60px; padding-top: var(--s-3); border-top: 1px solid var(--line); }
 .composer .extras { padding: var(--s-2) var(--s-5) var(--s-1); display: flex; flex-direction: column; gap: var(--s-3); }
 .composer .ai { display: flex; gap: var(--s-2); flex-wrap: wrap; align-items: center; }
 .composer .bar { display: flex; gap: var(--s-1); align-items: center; padding: var(--s-3); flex-wrap: wrap; }
 .similar { display: flex; gap: var(--s-3); align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s-3) var(--s-4); flex-wrap: wrap; }
-.howto { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s-3); }
-.howto div { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg); padding: var(--s-5); display: flex; flex-direction: column; gap: var(--s-2); align-items: flex-start; }
-.howto b { font-weight: var(--fw-semibold); margin-top: var(--s-1); }
 
 /* ================= 12. Совещания ================= */
 .dropzone { border: 1.5px dashed var(--line-strong); border-radius: var(--r-lg); padding: var(--s-8) var(--s-4); display: flex; flex-direction: column; align-items: center; gap: var(--s-2);
@@ -505,6 +517,8 @@ table.tbl td b { font-weight: var(--fw-semibold); }
   .step { font-size: 10.5px; letter-spacing: -.01em; padding: 0 1px; }
   .ds-type { grid-template-columns: minmax(0, 1fr); }
 }
+/* Telegram Mini App: выход и ссылку «Назад» заменяют средства самого Telegram */
+.tg .no-tg, .tg a.back { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }

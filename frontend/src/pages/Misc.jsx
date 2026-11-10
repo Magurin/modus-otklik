@@ -79,7 +79,7 @@ export function Profile() {
           <ErrorNote text={error} />
           {list ? list.map((m) => <Messenger key={m.key} m={m} onChange={reload} />) : <Spinner />}
         </div>
-        <div><button className="btn ghost" onClick={logout}><LogOut size={16} /> Выйти</button></div>
+        <div className="no-tg"><button className="btn ghost" onClick={logout}><LogOut size={16} /> Выйти</button></div>
       </div>
     </div>
   )

@@ -16,8 +16,8 @@ from . import ai, bots, mail, meetings, workflow
 from .config import UPLOAD_DIR, settings
 from .db import get_db
 from .models import (FINAL, PRIORITIES, ROLES, SOURCES, STATUSES, TYPES, Appeal, Attachment, Category, Department,
-                     Digest, Event, Meeting, MeetingItem, Notification, Support, User, now)
-from .security import admin_only, check_password, current_user, handler, make_token, overseer
+                     Digest, Event, Meeting, MeetingItem, Notification, User, now)
+from .security import admin_only, check_init_data, check_password, current_user, handler, make_token, overseer
 
 router = APIRouter(prefix="/api")
 MAX_FILE = 20 * 1024 * 1024
@@ -84,12 +84,7 @@ def appeal_detail(db: Session, a: Appeal, viewer: User) -> dict:
     can_handle = workflow.can_handle(viewer, a)
     is_author = a.author_id == viewer.id
     events = [event_view(e, a, viewer) for e in a.events if can_handle or not e.internal]
-    open_q = None
-    for e in a.events:  # последний вопрос без ответа
-        if e.kind == "question":
-            open_q = e
-        elif e.kind == "answer":
-            open_q = None
+    open_q = workflow.open_question(a)
     sim = [{"id": r.id, "number": r.number, "title": r.title, "status": r.status, "score": s,
             "can_open": workflow.can_view(viewer, r)}
            for r, s in workflow.similar(db, f"{a.title}. {a.text}", exclude_id=a.id)]
@@ -99,9 +94,10 @@ def appeal_detail(db: Session, a: Appeal, viewer: User) -> dict:
         "attachments": [{"id": f.id, "filename": f.filename, "size": f.size} for f in a.attachments],
         "similar": sim, "meeting_id": a.meeting_id if can_handle else None,
         "open_question": {"text": open_q.text, "by_ai": bool(open_q.data.get("by_ai"))} if open_q else None,
-        "supported": any(s.user_id == viewer.id for s in a.supports),
+        "supported": any(s.user_id == viewer.id for s in a.supports), "rating": a.rating,
         "can": {"handle": can_handle, "answer": is_author and open_q is not None, "comment": can_handle or is_author,
                 "support": not is_author and a.status not in FINAL,
+                "rate": is_author and a.status == "done" and not a.rating,
                 "transitions": sorted(workflow.TRANSITIONS[a.status], key=list(STATUSES).index) if can_handle else []},
     }
 
@@ -148,6 +144,44 @@ def demo_login(body: dict, db: Session = Depends(get_db)):
     if not u:
         bad("Пользователь не найден", 404)
     return {"token": make_token(u), "user": user_full(u)}
+
+
+class InitDataIn(BaseModel):
+    init_data: str
+
+
+def telegram_id(init_data: str) -> str:
+    """Кто открыл Mini App: Telegram подписывает данные запуска токеном бота, подделать их нельзя."""
+    if not settings.telegram_token:
+        bad("Telegram-бот не подключен", 404)
+    who = check_init_data(init_data, settings.telegram_token)
+    if not who or not who.get("id"):
+        bad("Данные Telegram не прошли проверку. Закройте приложение и откройте заново из бота", 401)
+    return str(who["id"])
+
+
+@router.post("/auth/telegram")
+def telegram_login(body: InitDataIn, db: Session = Depends(get_db)):
+    """Вход в Mini App без пароля - для тех, кто уже привязал Telegram к учетной записи."""
+    tg_id = telegram_id(body.init_data)
+    u = db.scalar(select(User).where(User.tg_chat_id == tg_id, User.active))
+    if not u:
+        bad("Этот Telegram еще не привязан к учетной записи", 404)
+    return {"token": make_token(u), "user": user_full(u)}
+
+
+@router.post("/me/messengers/telegram/webapp")
+def telegram_link(body: InitDataIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Привязать Telegram, из которого открыт Mini App, к вошедшему сотруднику - без кода."""
+    tg_id = telegram_id(body.init_data)
+    for other in db.scalars(select(User).where(User.tg_chat_id == tg_id, User.id != user.id)):
+        other.tg_chat_id = None  # один Telegram - одна учетная запись
+    fresh = user.tg_chat_id != tg_id
+    user.tg_chat_id, user.tg_link_code = tg_id, None
+    db.commit()
+    if fresh:
+        bots.channels()["telegram"].push(tg_id, f"Здравствуйте, {user.name}! Telegram привязан.\n\n{bots.HELP}", bots.menu_buttons(user))
+    return user_full(user)
 
 
 @router.get("/me")
@@ -319,14 +353,7 @@ def comment(appeal_id: int, body: TextIn, user: User = Depends(current_user), db
         bad("Комментировать могут автор и те, кто рассматривает обращение", 403)
     if not body.text.strip():
         bad("Пустой комментарий")
-    internal = body.internal and can_handle
-    workflow.add_event(db, a, "comment", user, body.text.strip(), internal=internal)
-    if can_handle:
-        if not internal:
-            workflow.mark_response(a)
-            workflow.notify(db, a.author_id, a, f"{a.number}: новый комментарий")
-    else:
-        workflow.notify(db, a.assignee_id, a, f"{a.number}: комментарий автора")
+    workflow.comment(db, a, user, body.text, body.internal)
     db.commit()
     return appeal_detail(db, a, user)
 
@@ -373,6 +400,25 @@ def answer(appeal_id: int, body: TextIn, user: User = Depends(current_user), db:
     return appeal_detail(db, a, user)
 
 
+class RateIn(BaseModel):
+    ok: bool
+    text: str = ""
+
+
+@router.post("/appeals/{appeal_id}/rate")
+def rate(appeal_id: int, body: RateIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Автор подтверждает результат или возвращает обращение в работу."""
+    a = get_appeal(db, appeal_id, user)
+    if a.author_id != user.id:
+        bad("Оценить результат может только автор", 403)
+    try:
+        workflow.rate(db, a, user, body.ok, body.text)
+    except ValueError as e:
+        bad(str(e))
+    db.commit()
+    return appeal_detail(db, a, user)
+
+
 class AssignIn(BaseModel):
     user_id: int
 
@@ -414,7 +460,7 @@ def edit(appeal_id: int, body: EditIn, user: User = Depends(current_user), db: S
         a.priority = body.priority
     if body.due_days:
         a.due_at = now() + timedelta(days=max(1, min(body.due_days, 365)))
-        a.escalated_at = None
+        a.escalated_at = a.reminded_at = None
         changes.append(f"срок перенесен на {a.due_at:%d.%m.%Y}")
     new_cat = None
     if body.category_id and body.category_id != a.category_id:
@@ -432,7 +478,7 @@ def edit(appeal_id: int, body: EditIn, user: User = Depends(current_user), db: S
         if to and to.id != a.assignee_id:
             a.assignee_id = to.id
             workflow.add_event(db, a, "routed", None, f"Назначен ответственный: {to.name} ({reason})")
-            workflow.notify(db, to.id, a, f"Вам передано обращение {a.number}: {a.title}")
+            workflow.notify(db, to.id, a, f"Вам передано обращение {a.number}: {a.title}", kind="assigned")
     db.commit()
     return appeal_detail(db, a, user)
 
@@ -443,15 +489,10 @@ def support(appeal_id: int, user: User = Depends(current_user), db: Session = De
     a = db.get(Appeal, appeal_id)
     if not a:
         bad("Обращение не найдено", 404)
-    if a.author_id == user.id:
-        bad("Это ваше обращение")
-    if a.status in FINAL:
-        bad("Обращение уже закрыто")
-    if any(s.user_id == user.id for s in a.supports):
-        bad("Вы уже поддержали это обращение")
-    a.supports.append(Support(user_id=user.id))
-    workflow.add_event(db, a, "supported", None, "Еще один сотрудник сообщил о том же")
-    workflow.notify(db, a.assignee_id, a, f"{a.number}: еще один сотрудник сообщил о том же (всего {len(a.supports)})")
+    try:
+        workflow.support(db, a, user)
+    except ValueError as e:
+        bad(str(e))
     db.commit()
     return {"ok": True, "number": a.number, "supports": len(a.supports)}
 

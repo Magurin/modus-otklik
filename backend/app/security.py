@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import json
 import secrets
+import time
 from datetime import datetime, timedelta, timezone
 
 import jwt
+from urllib.parse import parse_qsl
+
 from fastapi import Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
@@ -34,6 +38,25 @@ def check_password(password: str, stored: str) -> bool:
 def make_token(user: User) -> str:
     exp = datetime.now(timezone.utc) + timedelta(hours=12)
     return jwt.encode({"sub": str(user.id), "exp": exp}, settings.jwt_secret, algorithm="HS256")
+
+
+def check_init_data(init_data: str, bot_token: str, max_age: int = 24 * 3600) -> dict | None:
+    """Проверить данные запуска Telegram Mini App и вернуть пользователя Telegram (или None).
+
+    Подпись: HMAC-SHA256 от отсортированных пар «ключ=значение» с ключом HMAC-SHA256("WebAppData", токен бота).
+    """
+    try:
+        pairs = dict(parse_qsl(init_data, keep_blank_values=True, strict_parsing=True))
+        given = pairs.pop("hash")
+        check = "\n".join(f"{k}={v}" for k, v in sorted(pairs.items()))
+        secret = hmac.new(b"WebAppData", bot_token.encode(), hashlib.sha256).digest()
+        calc = hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(calc, given) or time.time() - int(pairs["auth_date"]) > max_age:
+            return None
+        user = json.loads(pairs["user"])
+        return user if isinstance(user, dict) else None
+    except (KeyError, ValueError):
+        return None
 
 
 def current_user(authorization: str = Header(default=""), db: Session = Depends(get_db)) -> User:

@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
-  Bell, EyeOff, FileText, HelpCircle, Lightbulb, Loader2, Paperclip, PenLine, Send, Sparkles, ThumbsUp, UserRoundCheck, X,
+  ArrowUp, EyeOff, FileText, HelpCircle, Lightbulb, Loader2, Paperclip, PenLine, Sparkles, ThumbsUp, UserRoundCheck, X,
 } from 'lucide-react'
 import { api } from '../api.js'
+import HomeFlow from '../HomeFlow.jsx'
 import Select, { fromList, fromMap } from '../Select.jsx'
 import { AppealItem, ErrorNote, Spinner, StatusPill, useApp, useLoad } from '../ui.jsx'
 
@@ -11,23 +12,18 @@ export default function Home() {
   const nav = useNavigate()
   const [rows, , error] = useLoad(() => api.get('/appeals?scope=mine'), [])
   const [tab, setTab] = useState('open')
-  const { meta } = useApp()
+  const { meta, user } = useApp()
   const open = rows ? rows.filter((a) => !meta.final.includes(a.status)) : []
   const closed = rows ? rows.filter((a) => meta.final.includes(a.status)) : []
   const shown = tab === 'open' ? open : closed
   return (
-    <div className="page">
-      <div className="hero"><h1>Что можно улучшить?</h1></div>
+    <div className="page home">
+      <HomeFlow role={user.role} />
+      <div className={`home-hero ${rows && rows.length === 0 ? 'first' : ''}`}><h1>Что можно улучшить?</h1></div>
       <Composer />
-      <div style={{ height: 32 }} />
+      <div style={{ height: 40 }} />
       <ErrorNote text={error} />
-      {!rows ? <Spinner /> : rows.length === 0 ? (
-        <div className="howto">
-          <div><span className="type-ico"><PenLine size={18} /></span><b>Напишите своими словами</b><span className="small muted">Проблему или идею</span></div>
-          <div><span className="type-ico"><UserRoundCheck size={18} /></span><b>Ответственный получит сразу</b><span className="small muted">Система сама найдет, кому передать</span></div>
-          <div><span className="type-ico"><Bell size={18} /></span><b>Следите за ответом</b><span className="small muted">Здесь и в Telegram</span></div>
-        </div>
-      ) : (
+      {!rows ? <Spinner /> : rows.length === 0 ? null : (
         <>
           <div className="section-title">
             <h2>Мои обращения</h2>
@@ -45,6 +41,14 @@ export default function Home() {
     </div>
   )
 }
+
+// заготовки: подпись на кнопке -> начало фразы в поле
+const STARTERS = [
+  ['Что-то мешает работе', 'Мешает работе: '],
+  ['Есть идея', 'Предлагаю '],
+  ['Долго ждем ответа', 'Долго ждем ответа от '],
+  ['Поблагодарить коллегу', 'Хочу поблагодарить '],
+]
 
 /** Одно поле вместо формы: человек пишет текст, тип, категорию и ответственного подбирает система. */
 export function Composer() {
@@ -121,16 +125,26 @@ export function Composer() {
     )
   }
   const similar = (hint?.similar || []).filter((s) => !s.mine).slice(0, 2)
+  // Enter отправляет, Shift+Enter - новая строка (во время набора через IME Enter не перехватываем)
+  const enterSends = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); submit() }
+  }
 
   return (
     <div className="stack tight">
+      {/* подсказки-заготовки над полем: нажал - в поле появилось начало фразы, осталось дописать */}
+      <div className="starters">
+        {STARTERS.map(([label, start]) => (
+          <button key={label} type="button" className="starter" onClick={() => { setText(start); area.current?.focus() }}>{label}</button>
+        ))}
+      </div>
       <div className="composer">
         <textarea ref={area} value={text} onChange={(e) => setText(e.target.value)} rows={3} aria-label="Текст обращения"
           placeholder="Опишите проблему или идею своими словами"
-          onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submit() }} />
+          onKeyDown={enterSends} />
         {withSolution && (
           <textarea className="second" value={solution} onChange={(e) => setSolution(e.target.value)} rows={2}
-            placeholder="Как это можно решить?" aria-label="Предлагаемое решение" autoFocus />
+            placeholder="Как это можно решить?" aria-label="Предлагаемое решение" autoFocus onKeyDown={enterSends} />
         )}
         {(hint || thinking || files.length > 0) && (
           <div className="extras">
@@ -166,8 +180,8 @@ export function Composer() {
           <button type="button" className={`btn ghost sm ${anonymous ? 'on' : ''}`} onClick={() => setAnonymous(!anonymous)} aria-pressed={anonymous}
             title="Имя и отдел не увидит никто, включая администратора"><EyeOff size={16} /> Анонимно</button>
           <span className="grow" />
-          <button className="btn primary" disabled={!ready || busy} onClick={submit}>
-            {busy ? <Loader2 size={16} className="spin" /> : <Send size={16} />} Отправить
+          <button className="send" disabled={!ready || busy} onClick={submit} aria-label="Отправить" title="Отправить - Enter">
+            {busy ? <Loader2 size={18} className="spin" /> : <ArrowUp size={19} />}
           </button>
         </div>
       </div>

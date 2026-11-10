@@ -13,7 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import ai
-from .models import FINAL, STATUSES, Appeal, Category, Event, Notification, User, now
+from .models import FINAL, STATUSES, Appeal, Category, Event, Notification, Support, User, now
 
 log = logging.getLogger("workflow")
 
@@ -48,12 +48,15 @@ def add_event(db: Session, appeal: Appeal, kind: str, actor: User | None = None,
     return ev
 
 
-def notify(db: Session, user_id: int | None, appeal: Appeal | None, text: str) -> None:
+def notify(db: Session, user_id: int | None, appeal: Appeal | None, text: str, kind: str = "", push: bool = True) -> None:
+    """Уведомление в системе и в мессенджерах. kind подсказывает боту, какие кнопки приложить:
+    assigned, question, answer, status, done, comment, support, due, overdue."""
     if not user_id:
         return
     db.add(Notification(user_id=user_id, appeal_id=appeal.id if appeal else None, text=text))
-    from . import bots
-    bots.push_user(db.get(User, user_id), text)
+    if push:
+        from . import bots
+        bots.push_user(db.get(User, user_id), text, appeal=appeal, kind=kind)
 
 
 def route(db: Session, category: Category | None) -> tuple[User | None, str]:
@@ -128,12 +131,28 @@ def register(db: Session, *, text: str, author: User | None = None, author_label
         appeal.assignee_id = assignee.id
         add_event(db, appeal, "routed", None, f"Назначен ответственный: {assignee.name} ({reason})",
                   data={"assignee_id": assignee.id}, at=created)
-        notify(db, assignee.id, appeal, f"Новое обращение {appeal.number}: {appeal.title}")
+        notify(db, assignee.id, appeal, f"Новое обращение {appeal.number}: {appeal.title}", kind="assigned")
     if triage and triage.question and author:
-        # ИИ заметил, что без уточнения работу не начать: спрашиваем автора сразу, не дожидаясь ответственного
-        add_event(db, appeal, "question", None, triage.question, data={"by_ai": True}, at=created)
-        notify(db, author.id, appeal, f"{appeal.number}: чтобы быстрее взять в работу, уточните. {triage.question}")
+        ask_by_ai(db, appeal, triage.question, at=created)
     return appeal
+
+
+def ask_by_ai(db: Session, appeal: Appeal, question: str, at: datetime | None = None, push: bool = True) -> None:
+    """ИИ заметил, что без уточнения работу не начать: спрашиваем автора сразу, не дожидаясь ответственного."""
+    add_event(db, appeal, "question", None, question, data={"by_ai": True}, at=at)
+    notify(db, appeal.author_id, appeal, f"{appeal.number}: чтобы быстрее взять в работу, уточните. {question}",
+           kind="question", push=push)
+
+
+def open_question(a: Appeal) -> Event | None:
+    """Последний вопрос автору, на который он еще не ответил."""
+    q = None
+    for e in a.events:
+        if e.kind == "question":
+            q = e
+        elif e.kind == "answer":
+            q = None
+    return q
 
 
 def can_view(user: User, a: Appeal) -> bool:
@@ -176,11 +195,59 @@ def set_status(db: Session, a: Appeal, status: str, actor: User, text: str = "")
             a.resolution = text
     else:
         a.closed_at = None
+    a.rating = None  # после нового итога автор оценивает результат заново
     add_event(db, a, "status", actor, text, data={"from": old, "to": status})
     msg = f"{a.number}: статус «{STATUSES[status]}»" + (f". {text}" if text else "")
-    notify(db, a.author_id, a, msg)
+    notify(db, a.author_id, a, msg, kind="done" if status == "done" else "status")
     for s in a.supports:
-        notify(db, s.user_id, a, msg)
+        notify(db, s.user_id, a, msg, kind="status")
+
+
+def rate(db: Session, a: Appeal, actor: User, ok: bool, text: str = "") -> None:
+    """Автор оценивает результат. Если вопрос не решен - обращение возвращается в работу."""
+    text = text.strip()
+    if a.status != "done":
+        raise ValueError("Оценить можно только реализованное обращение")
+    if a.rating:
+        raise ValueError("Вы уже оценили результат")
+    if ok:
+        a.rating = 1
+        add_event(db, a, "rated", actor, text, data={"ok": True})
+        notify(db, a.assignee_id, a, f"{a.number}: автор подтвердил, что вопрос решен", kind="status")
+        return
+    if not text:
+        raise ValueError("Напишите, что осталось нерешенным")
+    a.rating = -1
+    add_event(db, a, "rated", actor, text, data={"ok": False})
+    a.status, a.closed_at = "in_progress", None
+    add_event(db, a, "status", None, "Автор сообщил, что вопрос не решен", data={"from": "done", "to": "in_progress"})
+    notify(db, a.assignee_id, a, f"{a.number}: автор сообщил, что вопрос не решен. {text}", kind="assigned")
+
+
+def support(db: Session, a: Appeal, user: User) -> None:
+    """«У меня то же самое»: присоединиться к чужому обращению вместо дубля."""
+    if a.author_id == user.id:
+        raise ValueError("Это ваше обращение")
+    if a.status in FINAL:
+        raise ValueError("Обращение уже закрыто")
+    if any(s.user_id == user.id for s in a.supports):
+        raise ValueError("Вы уже поддержали это обращение")
+    a.supports.append(Support(user_id=user.id))
+    add_event(db, a, "supported", None, "Еще один сотрудник сообщил о том же")
+    notify(db, a.assignee_id, a, f"{a.number}: еще один сотрудник сообщил о том же (всего {len(a.supports)})", kind="support")
+
+
+def comment(db: Session, a: Appeal, actor: User, text: str, internal: bool = False) -> None:
+    """Комментарий автора или того, кто рассматривает. Внутренний виден только рассматривающим."""
+    handles = can_handle(actor, a)
+    internal = internal and handles
+    add_event(db, a, "comment", actor, text.strip(), internal=internal)
+    if handles:
+        if not internal:
+            mark_response(a)
+            notify(db, a.author_id, a, f"{a.number}: новый комментарий. {text.strip()[:300]}", kind="comment")
+    else:
+        notify(db, a.assignee_id, a, f"{a.number}: комментарий автора. {text.strip()[:300]}", kind="comment")
 
 
 def mark_response(a: Appeal) -> None:
@@ -193,7 +260,7 @@ def ask(db: Session, a: Appeal, actor: User, question: str) -> None:
     a.status = "clarify"
     mark_response(a)
     add_event(db, a, "question", actor, question.strip(), data={"from": old})
-    notify(db, a.author_id, a, f"{a.number}: нужен ваш ответ. {question.strip()}")
+    notify(db, a.author_id, a, f"{a.number}: нужен ваш ответ. {question.strip()}", kind="question")
     if a.author_id:
         from . import bots
         author = db.get(User, a.author_id)
@@ -206,7 +273,7 @@ def answer(db: Session, a: Appeal, actor: User, text: str) -> None:
     if a.status == "clarify":
         a.status = "review"
         add_event(db, a, "status", None, "Автор ответил на уточнение", data={"from": "clarify", "to": "review"})
-    notify(db, a.assignee_id, a, f"{a.number}: автор ответил на уточнение")
+    notify(db, a.assignee_id, a, f"{a.number}: автор ответил на уточнение. {text.strip()[:300]}", kind="answer")
     if a.author_id:
         author = db.get(User, a.author_id)
         if author and author.tg_pending_appeal_id == a.id:
@@ -216,7 +283,7 @@ def answer(db: Session, a: Appeal, actor: User, text: str) -> None:
 def assign(db: Session, a: Appeal, actor: User, to: User) -> None:
     a.assignee_id = to.id
     add_event(db, a, "assigned", actor, f"Ответственный: {to.name}", data={"assignee_id": to.id})
-    notify(db, to.id, a, f"Вам передано обращение {a.number}: {a.title}")
+    notify(db, to.id, a, f"Вам передано обращение {a.number}: {a.title}", kind="assigned")
 
 
 def similar(db: Session, text: str, exclude_id: int | None = None, limit: int = 4, threshold: float = 0.2) -> list[tuple[Appeal, float]]:
@@ -240,10 +307,16 @@ def check_deadlines(db: Session) -> int:
     for a in rows:
         a.escalated_at = t
         add_event(db, a, "escalated", None, "Срок рассмотрения истек - обращение поднято к руководству")
-        notify(db, a.assignee_id, a, f"{a.number}: срок рассмотрения истек")
+        notify(db, a.assignee_id, a, f"{a.number}: срок рассмотрения истек", kind="overdue")
         for d in directors:
             if d.id != a.assignee_id:
-                notify(db, d.id, a, f"{a.number} просрочено: {a.title}")
+                notify(db, d.id, a, f"{a.number} просрочено: {a.title}", kind="overdue")
+    # напоминание за сутки до срока - пока еще можно успеть
+    soon = db.scalars(select(Appeal).where(Appeal.status.notin_(FINAL), Appeal.due_at >= t,
+                                           Appeal.due_at < t + timedelta(hours=24), Appeal.reminded_at.is_(None))).all()
+    for a in soon:
+        a.reminded_at = t
+        notify(db, a.assignee_id, a, f"{a.number}: до срока рассмотрения меньше суток. {a.title}", kind="due")
     return len(rows)
 
 

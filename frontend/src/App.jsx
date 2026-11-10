@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Link, NavLink, Navigate, Route, Routes, useNavigate } from 'react-router-dom'
+import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { BarChart3, Bell, CheckCircle2, Home as HomeIcon, Inbox, LayoutList, LogOut, Mic, Settings } from 'lucide-react'
 import { api, token } from './api.js'
+import { tg } from './tg.js'
 import { Avatar, Ctx, Empty, Spinner, ago, useApp } from './ui.jsx'
 import Login from './Login.jsx'
 import Home from './pages/Home.jsx'
@@ -11,13 +12,26 @@ import Analytics from './pages/Analytics.jsx'
 import Admin from './pages/Admin.jsx'
 import { Improvements, Profile } from './pages/Misc.jsx'
 
+let tgTried = false // вход по данным Telegram пробуем один раз за запуск
+
 export default function App() {
   const [user, setUser] = useState(null)
   const [meta, setMeta] = useState(null)
   const [ready, setReady] = useState(false)
+  const [tgUnlinked, setTgUnlinked] = useState(false)
   const navigate = useNavigate()
+  const loc = useLocation()
 
   const boot = useCallback(async () => {
+    if (tg.app && !tgTried) {
+      tgTried = true
+      try {
+        token.set((await api.post('/auth/telegram', { init_data: tg.initData })).token)
+      } catch (e) {
+        // этот Telegram не привязан (или привязку сняли): прежнюю сессию не используем, просим войти
+        if (e.status === 404 || e.status === 401) { token.clear(); setTgUnlinked(e.status === 404) }
+      }
+    }
     if (!token.get()) { setUser(null); setReady(true); return }
     try {
       const [u, m] = await Promise.all([api.get('/me'), api.get('/meta')])
@@ -35,8 +49,24 @@ export default function App() {
     return () => window.removeEventListener('modus:logout', out)
   }, [])
 
+  // в Telegram вместо ссылки «Назад» на странице - системная кнопка в шапке
+  useEffect(() => {
+    const b = tg.app?.BackButton
+    if (!b) return undefined
+    const back = () => (window.history.state?.idx > 0 ? navigate(-1) : navigate('/'))
+    if (loc.pathname.split('/').filter(Boolean).length > 1) { b.show(); b.onClick(back) } else b.hide()
+    return () => b.offClick(back)
+  }, [loc.pathname, navigate])
+
   if (!ready) return <Spinner />
-  if (!user || !meta) return <Login onDone={(t) => { token.set(t); setReady(false); boot() }} />
+  const signedIn = async (t) => {
+    token.set(t)
+    setReady(false)
+    // вход внутри Telegram привязывает этот Telegram к учетной записи: дальше пароль не нужен, бот пишет сюда же
+    if (tg.app) await api.post('/me/messengers/telegram/webapp', { init_data: tg.initData }).catch(() => {})
+    boot()
+  }
+  if (!user || !meta) return <Login telegram={tgUnlinked} onDone={signedIn} />
 
   // после выхода следующий пользователь должен попасть на свою стартовую страницу, а не на адрес предыдущего
   const logout = () => { token.clear(); setUser(null); navigate('/', { replace: true }) }
@@ -97,7 +127,7 @@ function Nav() {
       {user.role === 'admin' && item('/admin', Settings, 'Настройки', 0, 'hide-phone')}
       <div className="nav-bottom">
         <Notifications />
-        <button className="nav-item hide-phone" onClick={logout} title="Выйти"><LogOut size={18} /><span className="lbl">Выйти</span></button>
+        <button className="nav-item hide-phone no-tg" onClick={logout} title="Выйти"><LogOut size={18} /><span className="lbl">Выйти</span></button>
         <NavLink to="/profile" className="nav-me" title={user.name}>
           <Avatar name={user.name} role={user.role} />
           <span className="who"><b>{user.name}</b><span>{user.position}</span></span>

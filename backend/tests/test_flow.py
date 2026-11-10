@@ -153,42 +153,185 @@ def test_meeting_to_appeals(client):
     assert a["source"] == "meeting" and a["author"]["external"] and a["assignee"]
 
 
+class Chat:
+    """Собеседник бота в тестах: вместо сети складываем исходящие сообщения в список."""
+
+    def __init__(self, ch, chat_id):
+        from app import bots
+        self.bots, self.ch, self.id = bots, ch, chat_id
+        if not hasattr(ch, "sent"):
+            ch.sent = []
+            ch.push = lambda chat_id, text, buttons=None, edit_id="": ch.sent.append((chat_id, text, buttons or []))
+
+    @property
+    def log(self):
+        return [m for m in self.ch.sent if m[0] == self.id]
+
+    @property
+    def last(self):
+        return self.log[-1][1]
+
+    def write(self, text="", **kw):
+        self.bots.handle(self.ch, self.bots.Incoming(chat_id=self.id, text=text, **kw))
+        return self.last
+
+    def tap(self, label):
+        """Нажать кнопку из недавних сообщений по началу подписи."""
+        for _, _, rows in reversed(self.log[-4:]):
+            for row in rows:
+                for text, data in row:
+                    if text.startswith(label):
+                        self.bots.handle(self.ch, self.bots.Incoming(chat_id=self.id, callback=data, message_id="1"))
+                        return self.last
+        raise AssertionError(f"нет кнопки «{label}»: {self.log[-1]}")
+
+    def link(self, client, headers):
+        code = client.post(f"/api/me/messengers/{self.ch.key}/code", headers=headers).json()
+        return self.write("/start", start_code=code["code"]), code
+
+
 def test_messenger_dialog(client):
     """Диалог с ботом одинаков для Telegram и MAX; проверяем на MAX без сети, подменив отправку."""
     from app import bots
     ch = bots.channels()["max"]
-    sent = []
-    ch.push = lambda chat_id, text: sent.append(text)
     ch.state.update(enabled=True, username="modus_otklik_bot")
-    emp = login(client, "pm")
+    emp, boss = login(client, "pm"), login(client, "director")
+    me = Chat(ch, "777")
 
-    bots.handle(ch, bots.Incoming(chat_id="777", text="Здравствуйте"))
-    assert "для сотрудников" in sent[-1]
-    link = client.post("/api/me/messengers/max/code", headers=emp).json()
+    assert "для сотрудников" in me.write("Здравствуйте")
+    hello, link = me.link(client, emp)
     assert link["link"] == f"https://max.ru/modus_otklik_bot?start={link['code']}"
-    bots.handle(ch, bots.Incoming(chat_id="777", text="/start", start_code=link["code"]))
-    assert "MAX привязан" in sent[-1]
+    assert "MAX привязан" in hello
     assert next(m for m in client.get("/api/me/messengers", headers=emp).json() if m["key"] == "max")["linked"]
 
-    bots.handle(ch, bots.Incoming(chat_id="777", text="коротко"))
-    assert "подробнее" in sent[-1]
-    bots.handle(ch, bots.Incoming(chat_id="777", text="На объекте не хватает актуальных схем подключения, монтажники звонят проектировщикам по каждому вопросу."))
-    assert "Зарегистрировано: A-" in sent[-1]
-    mine = client.get("/api/appeals?scope=mine", headers=emp).json()
-    a = next(r for r in mine if r["source"] == "max")
+    # текст становится черновиком: до подтверждения обращение не создается
+    assert "подробнее" in me.write("коротко")
+    before = len(client.get("/api/appeals?scope=mine", headers=emp).json())
+    card = me.write("На объекте не хватает актуальных схем подключения, монтажники звонят проектировщикам по каждому вопросу.")
+    assert "Черновик обращения" in card and "Рассмотрит:" in card
+    assert len(client.get("/api/appeals?scope=mine", headers=emp).json()) == before
+    assert "Анонимно: ваше имя" in me.tap("Анонимно: нет")
+    assert "Анонимно: ваше имя" not in me.tap("Анонимно: да")
+    me.tap("Категория")
+    assert "Каталог и данные" in me.tap("Каталог и данные")
+    assert "(дополнение)" in me.write("(дополнение) Особенно на складе.")       # следующее сообщение дополняет черновик
+    assert "Каталог и данные" in me.last                                         # выбранное вручную не перезаписывается
+    assert "Зарегистрировано: A-" in me.tap("Отправить")
+    a = next(r for r in client.get("/api/appeals?scope=mine", headers=emp).json() if r["source"] == "max")
+    assert a["category"] == "Каталог и данные" and a["assignee"]
 
-    boss = login(client, "director")
+    # уточнение приходит в мессенджер, следующий текст - ответ
     client.post(f"/api/appeals/{a['id']}/clarify", json={"text": "О каком объекте речь?"}, headers=boss)
-    assert "О каком объекте" in sent[-1]                      # вопрос пришел в мессенджер
-    bots.handle(ch, bots.Incoming(chat_id="777", text="Склад в Павлодаре"))
-    assert "передан ответственному" in sent[-1]
+    assert "О каком объекте" in me.last and me.log[-1][2][0][0][0] == "Ответить"
+    me.write("Склад в Павлодаре")
+    assert any("передан ответственному" in m[1] for m in me.log[-2:])
     d = client.get(f"/api/appeals/{a['id']}", headers=boss).json()
     assert d["status"] == "review" and any(e["kind"] == "answer" and "Павлодар" in e["text"] for e in d["events"])
 
-    bots.handle(ch, bots.Incoming(chat_id="777", text="/my"))
-    assert a["number"] in sent[-1]
+    assert a["number"] in me.write("/my")
+    assert a["title"] in me.tap(a["number"])                                     # карточка обращения
+    me.tap("Комментарий")
+    assert "Комментарий добавлен" in me.write("Схемы нужны к понедельнику")
+
+    # результат: автор не согласен - обращение возвращается в работу
+    client.post(f"/api/appeals/{a['id']}/status", json={"status": "in_progress"}, headers=boss)
+    client.post(f"/api/appeals/{a['id']}/status", json={"status": "done", "text": "Схемы выложены в общий каталог."}, headers=boss)
+    assert "Реализовано" in me.last
+    assert "Что осталось" in me.tap("Не решено")
+    assert "Вернул" in me.write("В каталоге старые версии схем")
+    d = client.get(f"/api/appeals/{a['id']}", headers=boss).json()
+    assert d["status"] == "in_progress" and d["rating"] == -1 and any(e["kind"] == "rated" for e in d["events"])
+    client.post(f"/api/appeals/{a['id']}/status", json={"status": "done", "text": "Обновили схемы."}, headers=boss)
+    assert "Спасибо" in me.tap("Решено")
+    assert client.get(f"/api/appeals/{a['id']}", headers=emp).json()["rating"] == 1
+
+    # похожее обращение: присоединиться вместо дубля
+    other = Chat(ch, "778")
+    other.link(client, login(client, "design"))
+    card = other.write("Обсуждения по задаче идут в разных каналах и мессенджерах, контекст теряется, нужно единое место для решений.")
+    assert "A-012" in card
+    assert "Присоединил вас к A-012" in other.tap("У меня то же: A-012")
+    assert "уже отправлен или отменен" in other.tap("Отправить")                 # черновик закрыт, дубль не создать
+    client.post("/api/me/messengers/max/unlink", headers=login(client, "design"))
+
+    # фото без подписи -> описание -> обращение с вложением
+    bots._download = lambda ch, inc: {"filename": inc.file_name, "stored": "test-photo.jpg", "size": 5}
+    assert "Файл получил" in me.write(file_url="x", file_name="щит.jpg")
+    assert "Вложений: 1" in me.write("В щитовой на втором этаже нет маркировки автоматов, фото прилагаю.")
+    me.tap("Отправить")
+    b = next(r for r in client.get("/api/appeals?scope=mine", headers=emp).json() if r["source"] == "max")
+    assert [f["filename"] for f in client.get(f"/api/appeals/{b['id']}", headers=emp).json()["attachments"]] == ["щит.jpg"]
+
     client.post("/api/me/messengers/max/unlink", headers=emp)
     ch.state.update(enabled=False)
+
+
+def test_handler_works_from_bot(client):
+    """Ответственный разбирает входящие кнопками: взять в работу, уточнить, закрыть с итогом."""
+    from app import bots
+    ch = bots.channels()["max"]
+    ch.state.update(enabled=True, username="modus_otklik_bot")
+    emp, mgr = login(client, "sales"), login(client, "contracts")
+    boss = Chat(ch, "888")
+    boss.link(client, mgr)
+    cats = {c["name"]: c["id"] for c in client.get("/api/meta", headers=emp).json()["categories"]}
+    a = client.post("/api/appeals", data={"text": "Шаблон договора поставки не содержит пункта о сроках приемки оборудования.",
+                                          "type": "problem", "category_id": cats["Договорная работа"], "priority": "medium",
+                                          "title": "Нет сроков приемки в шаблоне"}, headers=emp).json()
+    assert f"Новое обращение {a['number']}" in boss.last
+    assert a["number"] in boss.write("/inbox")
+    assert "В работе" in boss.tap("Взять в работу")
+    boss.tap("Уточнить")
+    assert "Вопрос отправлен автору" in boss.write("Для каких поставщиков?")
+    assert client.get(f"/api/appeals/{a['id']}", headers=emp).json()["status"] == "clarify"
+    boss.tap("Открыть")
+    assert "На рассмотрении" in boss.tap("Вернуть на рассмотрение")
+    boss.tap("Взять в работу")
+    assert "опишите, что сделано" in boss.tap("Готово")
+    assert "Реализовано" in boss.write("Пункт о сроках приемки добавлен в шаблон.")
+    d = client.get(f"/api/appeals/{a['id']}", headers=emp).json()
+    assert d["status"] == "done" and d["resolution"].startswith("Пункт") and d["can"]["rate"]
+    # посторонний сотрудник чужую карточку кнопкой не откроет
+    client.post("/api/me/messengers/max/unlink", headers=mgr)
+    stranger = Chat(ch, "999")
+    stranger.link(client, login(client, "office"))
+    bots.handle(ch, bots.Incoming(chat_id="999", callback=f"st:{a['id']}:in_progress"))
+    assert "не найдено" in stranger.last
+    client.post("/api/me/messengers/max/unlink", headers=login(client, "office"))
+    ch.state.update(enabled=False)
+
+
+def test_telegram_mini_app_login(client):
+    """Mini App: вход по подписанным данным запуска Telegram, привязка без кода."""
+    import hashlib, hmac, json, time
+    from urllib.parse import urlencode
+    from app.config import settings
+
+    def init_data(tg_id, token="1234:TEST", age=0):
+        pairs = {"auth_date": str(int(time.time()) - age), "query_id": "q1", "user": json.dumps({"id": tg_id, "first_name": "T"})}
+        check = "\n".join(f"{k}={v}" for k, v in sorted(pairs.items()))
+        secret = hmac.new(b"WebAppData", token.encode(), hashlib.sha256).digest()
+        return urlencode({**pairs, "hash": hmac.new(secret, check.encode(), hashlib.sha256).hexdigest()})
+
+    assert client.post("/api/auth/telegram", json={"init_data": init_data(555)}).status_code == 404  # бот не подключен
+    settings.telegram_token = "1234:TEST"
+    try:
+        assert client.post("/api/auth/telegram", json={"init_data": init_data(555)}).status_code == 404  # еще не привязан
+        assert client.post("/api/auth/telegram", json={"init_data": init_data(555, token="9:FAKE")}).status_code == 401
+        assert client.post("/api/auth/telegram", json={"init_data": init_data(555, age=3 * 24 * 3600)}).status_code == 401
+        assert client.post("/api/auth/telegram", json={"init_data": init_data(555).replace("555", "556")}).status_code == 401
+        emp = login(client, "design")
+        assert client.post("/api/me/messengers/telegram/webapp", json={"init_data": init_data(555)}, headers=emp).json()["telegram"]
+        r = client.post("/api/auth/telegram", json={"init_data": init_data(555)})
+        assert r.status_code == 200 and r.json()["user"]["email"] == "design@modus.demo"
+        h = {"Authorization": f"Bearer {r.json()['token']}"}
+        assert client.get("/api/me", headers=h).json()["email"] == "design@modus.demo"
+        # тот же Telegram привязывает другой сотрудник - у прежнего привязка снимается
+        client.post("/api/me/messengers/telegram/webapp", json={"init_data": init_data(555)}, headers=login(client, "office"))
+        assert client.post("/api/auth/telegram", json={"init_data": init_data(555)}).json()["user"]["email"] == "office@modus.demo"
+        client.post("/api/me/messengers/telegram/unlink", headers=login(client, "office"))
+    finally:
+        settings.telegram_token = ""
 
 
 def test_email_intake(client):

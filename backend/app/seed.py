@@ -220,10 +220,17 @@ def seed(db: Session) -> None:
 def migrate() -> None:
     """Добавить колонки, появившиеся после первого запуска (SQLite сам таблицы не обновляет)."""
     from sqlalchemy import inspect, text
-    cols = {c["name"] for c in inspect(engine).get_columns("users")}
-    if "max_user_id" not in cols:
-        with engine.begin() as con:
-            con.execute(text("ALTER TABLE users ADD COLUMN max_user_id VARCHAR(40)"))
+    added = {
+        "users": {"max_user_id": "VARCHAR(40)", "bot_state": "JSON", "bot_prefs": "JSON", "ext_ids": "JSON"},
+        "departments": {"ext_ids": "JSON"},
+        "appeals": {"rating": "INTEGER", "reminded_at": "DATETIME"},
+    }
+    for table, columns in added.items():
+        have = {c["name"] for c in inspect(engine).get_columns(table)}
+        for name, ddl in columns.items():
+            if name not in have:
+                with engine.begin() as con:
+                    con.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
 
 
 def seed_if_empty() -> None:
