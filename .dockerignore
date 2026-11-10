@@ -1,0 +1,20 @@
+# в образ попадают только backend/app, backend/requirements.txt и исходники фронтенда
+**/node_modules
+**/__pycache__
+**/.pytest_cache
+.git
+.vercel
+.claude
+backend/.venv
+backend/.env
+backend/data
+backend/tests
+backend/scripts
+frontend/dist
+api
+demo
+tg
+*.MP4
+*.mp4
+*.docx
+видео_расшифровка.txt

@@ -21,6 +21,8 @@ from .models import Meeting
 from .seed import seed_if_empty
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+# httpx пишет в журнал адрес каждого запроса, а в адресе Telegram API - токен бота
+logging.getLogger("httpx").setLevel(logging.WARNING)
 log = logging.getLogger("app")
 
 
