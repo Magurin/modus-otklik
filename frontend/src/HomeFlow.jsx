@@ -35,6 +35,15 @@ export default function HomeFlow({ role = 'employee' }) {
     let w = 0, h = 0, raf = 0, frame = 0, last = 0, flow = 0, energy = 0
     let cx = 0, cy = 260, halfW = 300
     let tx = 0, ty = 260, placed = false  // куда точка схода должна прийти; сама она туда доезжает плавно
+    let anchorEl = null
+    // сколько прокручена страница: сумма прокрутки всех контейнеров над полем ввода.
+    // Прокрутку окна дает <html> (его scrollTop), поэтому window.scrollY отдельно не прибавляем - иначе она удвоится
+    const scrolled = () => {
+      if (!anchorEl) return window.scrollY
+      let s = 0
+      for (let p = anchorEl.parentElement; p; p = p.parentElement) s += p.scrollTop
+      return s
+    }
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -49,41 +58,42 @@ export default function HomeFlow({ role = 'employee' }) {
 
     function draw(ms) {
       const dt = Math.min(0.05, (ms - last) / 1000 || 0); last = ms
-      const t = ms / 1000
       energy *= 0.975
       flow += dt * (1 + energy * 5)
-      // точка схода привязана к верху поля ввода (в его положении без прокрутки), а не к центру: поле растет,
-      // когда человек печатает, добавляет решение или получает подсказки, - линии при этом остаются на месте.
-      // Фон зафиксирован и при скролле не двигается; если поле все же сместилось (изменили окно), линии доезжают плавно
+      // Рисунок строится один раз - таким, каким он виден при открытии страницы, - и дальше не меняется:
+      // точка схода привязана к верху поля ввода (поле растет при наборе, а линии остаются на месте),
+      // форма линий от времени не зависит. При прокрутке рисунок уезжает вместе со страницей как одно целое с полем.
       if (frame++ % 12 === 0) {
-        const el = document.querySelector('.composer')
+        anchorEl = document.querySelector('.composer')
         const box = cv.getBoundingClientRect()
-        if (el) {
-          const r = el.getBoundingClientRect()
-          let scroll = window.scrollY
-          for (let p = el.parentElement; p; p = p.parentElement) scroll += p.scrollTop
-          tx = r.left - box.left + r.width / 2; ty = r.top + scroll - box.top + ANCHOR; halfW = r.width / 2
+        if (anchorEl) {
+          const r = anchorEl.getBoundingClientRect()
+          tx = r.left - box.left + r.width / 2; ty = r.top + scrolled() - box.top + ANCHOR; halfW = r.width / 2
           if (!placed || still) { cx = tx; cy = ty; placed = true }
         }
       }
       cx += (tx - cx) * 0.08; cy += (ty - cy) * 0.08
-      ctx.clearRect(0, 0, w, h)
+      ctx.setTransform(1, 0, 0, 1, 0, 0)
+      ctx.clearRect(0, 0, cv.width, cv.height)
+      const dpr = cv.width / (w || 1)
+      ctx.setTransform(dpr, 0, 0, dpr, 0, -scrolled() * dpr)
       ctx.lineCap = 'round'
       bundles.forEach((b, bi) => {
         const x0 = b.side < 0 ? -40 : w + 40
         for (let i = 0; i < b.n; i++) {
           const o = i - (b.n - 1) / 2
           const ph = bi * 1.7 + i * 0.45
-          const y0 = h * b.at + o * b.gap + Math.sin(t * 0.22 + ph) * 14
+          // форма линии от времени не зависит: нити неподвижны, по ним бегут только точки
+          const y0 = h * b.at + o * b.gap + Math.sin(ph) * 14
           const ye = cy + o * 5
           const p = [
             x0, y0,
-            x0 - b.side * w * 0.22, y0 + Math.cos(t * 0.16 + ph) * 30 + (cy - y0) * 0.05,
-            cx + b.side * (halfW + w * 0.12), ye + Math.sin(t * 0.19 + ph * 1.3) * 16,
+            x0 - b.side * w * 0.22, y0 + Math.cos(ph) * 30 + (cy - y0) * 0.05,
+            cx + b.side * (halfW + w * 0.12), ye + Math.sin(ph * 1.3) * 16,
             cx, ye,
           ]
           const bold = i === b.bold
-          const a = (bold ? 0.68 : 0.2 + 0.12 * (i % 3)) * (1 + energy * 0.4)
+          const a = bold ? 0.68 : 0.2 + 0.12 * (i % 3)
           // линия гаснет у края поля, чтобы не просвечивать за карточкой
           const len = Math.abs(cx - x0)
           const f = Math.max(0.3, Math.min(1, (len - halfW + 24) / len))
@@ -110,11 +120,15 @@ export default function HomeFlow({ role = 'employee' }) {
     const ro = new ResizeObserver(resize)
     ro.observe(cv)
     window.addEventListener('input', typing, true)
+    // без анимации кадры не идут сами: при прокрутке перерисовываем вручную, чтобы рисунок ехал со страницей
+    const onScroll = () => { if (still) draw(0) }
+    window.addEventListener('scroll', onScroll, true)
     if (!still) raf = requestAnimationFrame(draw)
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
       window.removeEventListener('input', typing, true)
+      window.removeEventListener('scroll', onScroll, true)
     }
   }, [role])
   return <canvas ref={ref} className="home-flow" aria-hidden="true" />
