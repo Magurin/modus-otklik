@@ -1,0 +1,72 @@
+/* Доска сроков (pages/Board.jsx). Все значения - из design/tokens.css.
+   Цвет несут только: красный - просрочено, акцент - сегодня, точка статуса - этап обращения. */
+
+.page.board { max-width: none; }
+
+/* сводка: ячейки разделены линией в 1px, сколько бы их ни встало в ряд */
+.bd-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; background: var(--line);
+  border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden; margin-bottom: var(--s-5); }
+.bd-stat { background: var(--surface); border: 0; padding: var(--s-4) var(--s-5); text-align: left; display: flex; flex-direction: column; }
+button.bd-stat:hover { background: var(--surface-2); }
+.bd-stat b { font-size: var(--fs-display); line-height: var(--lh-display); font-weight: var(--fw-bold); letter-spacing: -.022em; font-variant-numeric: tabular-nums; }
+.bd-stat span { color: var(--ink-2); font-size: var(--fs-small); line-height: var(--lh-small); }
+.bd-stat.bad b { color: var(--danger-text); }
+.bd-stat.ok b { color: var(--success-text); }
+.bd-stat.zero b { color: var(--disabled); }
+
+.bd-bar { margin-bottom: var(--s-5); }
+.bd-nav { margin-left: auto; display: flex; align-items: center; gap: var(--s-1); }
+.bd-range { min-width: 108px; text-align: center; font-weight: var(--fw-semibold); font-size: var(--fs-small); }
+
+/* колонки-дни: день со сроками - полная колонка, пустой - узкая с одной датой */
+.bd-board { display: grid; grid-template-columns: var(--bd-cols); gap: var(--s-3); align-items: start; overflow-x: auto; padding-bottom: var(--s-3); }
+.bd-col { min-width: 0; display: flex; flex-direction: column; gap: var(--s-2); }
+.bd-col-head { display: flex; align-items: baseline; gap: var(--s-2); padding: 0 2px var(--s-2); border-bottom: 2px solid var(--n-200); margin-bottom: var(--s-1); white-space: nowrap; }
+.bd-col-head b { font-weight: var(--fw-semibold); }
+.bd-col-head span { color: var(--muted); font-size: var(--fs-small); }
+.bd-col-head .n { margin-left: auto; color: var(--ink); font-weight: var(--fw-semibold); font-variant-numeric: tabular-nums; }
+.bd-col.today .bd-col-head { border-color: var(--accent); }
+.bd-col.today .bd-col-head b { color: var(--accent-ink); }
+.bd-col.overdue .bd-col-head { border-color: var(--danger-solid); }
+.bd-col.overdue .bd-col-head b, .bd-col.overdue .bd-col-head .n { color: var(--danger-text); }
+.bd-col.slim .bd-col-head { flex-direction: column; align-items: center; gap: 0; }
+.bd-col.slim .bd-col-head b { color: var(--muted); font-weight: var(--fw-medium); }
+
+.bd-card { display: flex; flex-direction: column; gap: var(--s-2); padding: var(--s-3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-md);
+  color: var(--ink); transition: border-color var(--t-fast) var(--ease); }
+.bd-card:hover { border-color: var(--n-400); text-decoration: none; }
+.bd-card:focus-visible { outline-offset: calc(-1 * var(--focus-gap)); }
+.bd-card .t { font-weight: var(--fw-semibold); font-size: var(--fs-small); line-height: var(--lh-small); overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.bd-card .who { display: flex; align-items: center; gap: var(--s-2); font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--ink-2); }
+.bd-card .who .grow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bd-card .avatar { width: 20px; height: 20px; font-size: 9px; }
+.bd-high { font-size: var(--fs-caption); color: var(--warning-text); }
+.bd-high svg { color: var(--warning-text); }
+
+/* по людям */
+.bd-table th.r, .bd-table td.r { text-align: right; }
+.bd-table th span { font-weight: var(--fw-regular); }
+.bd-table th.today { color: var(--accent-ink); font-weight: var(--fw-semibold); }
+.bd-table th.overdue { color: var(--danger-text); font-weight: var(--fw-semibold); }
+.bd-table td { vertical-align: top; }
+.bd-table td.today, .bd-table th.today { background: var(--a-50); }
+.bd-table td.has { min-width: 170px; }
+.bd-table tfoot td { border-top: 1px solid var(--line); border-bottom: 0; color: var(--ink-2); font-weight: var(--fw-semibold); font-size: var(--fs-small); }
+.bd-person { display: flex; align-items: center; gap: var(--s-3); width: 100%; border: 0; background: transparent; padding: 0; text-align: left; }
+.bd-person b, .bd-person .small { display: block; }
+.bd-person:hover b { color: var(--accent); }
+.bd-cell { display: flex; flex-direction: column; gap: var(--s-1); }
+.bd-chip { display: flex; align-items: center; gap: 7px; max-width: 220px; height: 26px; padding: 0 var(--s-2); border-radius: var(--r-xs); background: var(--fill);
+  color: var(--ink); font-size: var(--fs-small); }
+.bd-chip:hover { background: var(--fill-hover); text-decoration: none; }
+.bd-chip > span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bd-chip.bad { background: color-mix(in srgb, var(--danger-solid) 10%, var(--surface)); color: var(--danger-text); }
+
+/* телефон: дни идут друг под другом, пустые не показываем */
+@media (max-width: 640px) {
+  .bd-board { grid-template-columns: minmax(0, 1fr); gap: var(--s-5); overflow: visible; }
+  .bd-col.slim { display: none; }
+  .bd-nav { margin-left: 0; width: 100%; justify-content: space-between; }
+  .bd-stat { padding: var(--s-3) var(--s-4); }
+}

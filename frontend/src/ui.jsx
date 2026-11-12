@@ -67,7 +67,7 @@ export function dueText(a) {
 /* ---------- статусы и типы ---------- */
 // Цвет несет только точка, и он тот же, что у этапа на шкале: синее кольцо - новое, оранжевый - рассмотрение,
 // желтый - в работе, малиновый - ждем автора, зеленый - сделано, красный - отказ, серый - закрыто.
-const STATUS_DOT = { new: 'st-new', review: 'st-review', clarify: 'st-wait', in_progress: 'st-work', done: 'ok', rejected: 'bad', closed: '' }
+export const STATUS_DOT = { new: 'st-new', review: 'st-review', clarify: 'st-wait', in_progress: 'st-work', done: 'ok', rejected: 'bad', closed: '' }
 // тип обращения - это знак на плитке; цвет плитки - статус обращения (тот же, что у точки и шкалы этапов)
 const TYPE_ICON = { problem: MessageSquareWarning, proposal: Lightbulb, praise: Heart }
 

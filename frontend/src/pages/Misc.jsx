@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CheckCircle2, ChevronRight, LayoutList, LogOut, Send, Settings, Users } from 'lucide-react'
+import { CalendarDays, CheckCircle2, ChevronRight, LayoutList, LogOut, Send, Settings, Users } from 'lucide-react'
 import { api } from '../api.js'
 import { Avatar, Empty, ErrorNote, Spinner, Status, day, useApp, useLoad } from '../ui.jsx'
 import { AgentCard, CalendarCard } from './Connections.jsx'
@@ -68,6 +68,7 @@ function PhoneSections() {
   if (user.role === 'employee') return null  // у сотрудника все разделы помещаются в панель
   const links = [
     ['/all', LayoutList, 'Все обращения'],
+    ['/board', CalendarDays, 'Доска сроков'],
     ['/done', CheckCircle2, 'Что сделано'],
     ...(user.role === 'admin' ? [['/admin', Settings, 'Настройки']] : []),
   ]

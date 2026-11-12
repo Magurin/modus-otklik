@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
-import { BarChart3, Bell, CheckCircle2, Home as HomeIcon, Inbox, LayoutList, LogOut, Mic, Settings } from 'lucide-react'
+import { BarChart3, Bell, CalendarDays, CheckCircle2, Home as HomeIcon, Inbox, LayoutList, LogOut, Mic, Settings } from 'lucide-react'
 import { api, token } from './api.js'
 import { tg } from './tg.js'
 import { Avatar, Ctx, Empty, Spinner, ago, useApp } from './ui.jsx'
@@ -10,6 +10,7 @@ import { AppealList, AppealDetail } from './pages/Appeals.jsx'
 import { Meetings, MeetingDetail } from './pages/Meetings.jsx'
 import Analytics from './pages/Analytics.jsx'
 import Admin from './pages/Admin.jsx'
+import Board from './pages/Board.jsx'
 import { Improvements, Profile } from './pages/Misc.jsx'
 
 let tgTried = false // вход по данным Telegram пробуем один раз за запуск
@@ -83,6 +84,7 @@ export default function App() {
             <Route path="/appeals/:id" element={<AppealDetail />} />
             <Route path="/done" element={<Improvements />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/board" element={<Board />} />
             {isHandler && <>
               <Route path="/inbox" element={<AppealList scope="inbox" />} />
               <Route path="/all" element={<AppealList scope="all" />} />
@@ -121,6 +123,7 @@ function Nav() {
       {item('/home', HomeIcon, 'Главная')}
       {isHandler && item('/inbox', Inbox, 'Входящие', inbox)}
       {isHandler && item('/all', LayoutList, 'Все обращения', 0, 'hide-phone')}
+      {item('/board', CalendarDays, 'Доска сроков', 0, isHandler ? 'hide-phone' : '')}
       {isHandler && item('/meetings', Mic, 'Совещания')}
       {isHandler && item('/analytics', BarChart3, 'Аналитика')}
       {item('/done', CheckCircle2, 'Что сделано', 0, isHandler ? 'hide-phone' : '')}
