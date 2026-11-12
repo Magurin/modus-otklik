@@ -10,6 +10,8 @@ const bundlesFor = (role) => [
   { side: 1, at: 0.66, n: 5, gap: 24, rgb: role, bold: 2 },
 ]
 
+const ANCHOR = 86  // точка схода - на этой глубине от верха поля: середина поля в исходном, пустом виде
+
 const bez = (p, t) => {
   const u = 1 - t
   return [
@@ -32,6 +34,7 @@ export default function HomeFlow({ role = 'employee' }) {
     const bundles = bundlesFor(color)
     let w = 0, h = 0, raf = 0, frame = 0, last = 0, flow = 0, energy = 0
     let cx = 0, cy = 260, halfW = 300
+    let tx = 0, ty = 260, placed = false  // куда точка схода должна прийти; сама она туда доезжает плавно
 
     const resize = () => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
@@ -49,7 +52,9 @@ export default function HomeFlow({ role = 'employee' }) {
       const t = ms / 1000
       energy *= 0.975
       flow += dt * (1 + energy * 5)
-      // точка схода - центр поля ввода в его положении без прокрутки: фон зафиксирован и при скролле не двигается
+      // точка схода привязана к верху поля ввода (в его положении без прокрутки), а не к центру: поле растет,
+      // когда человек печатает, добавляет решение или получает подсказки, - линии при этом остаются на месте.
+      // Фон зафиксирован и при скролле не двигается; если поле все же сместилось (изменили окно), линии доезжают плавно
       if (frame++ % 12 === 0) {
         const el = document.querySelector('.composer')
         const box = cv.getBoundingClientRect()
@@ -57,9 +62,11 @@ export default function HomeFlow({ role = 'employee' }) {
           const r = el.getBoundingClientRect()
           let scroll = window.scrollY
           for (let p = el.parentElement; p; p = p.parentElement) scroll += p.scrollTop
-          cx = r.left - box.left + r.width / 2; cy = r.top + scroll - box.top + r.height / 2; halfW = r.width / 2
+          tx = r.left - box.left + r.width / 2; ty = r.top + scroll - box.top + ANCHOR; halfW = r.width / 2
+          if (!placed || still) { cx = tx; cy = ty; placed = true }
         }
       }
+      cx += (tx - cx) * 0.08; cy += (ty - cy) * 0.08
       ctx.clearRect(0, 0, w, h)
       ctx.lineCap = 'round'
       bundles.forEach((b, bi) => {
