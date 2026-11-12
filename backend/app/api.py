@@ -819,13 +819,11 @@ def transcribe_part(audio: UploadFile = File(...), prev: str = Form(""), user: U
         bad(str(e), 502)
 
 
-def run_meeting(db: Session, m: Meeting) -> None:
+def run_meeting(db: Session, m: Meeting, url: str = "", ext: str = "") -> None:
     """На своем сервере совещание разбирается в фоне. В бессерверной среде фоновых потоков нет - разбираем в запросе."""
+    meetings.run(m.id, url, ext)
     if settings.serverless:
-        meetings.process(m.id)
         db.refresh(m)
-    else:
-        meetings.start(m.id)
 
 
 @router.get("/meetings")
@@ -882,17 +880,8 @@ def accept_item(item_id: int, body: ItemIn, user: User = Depends(handler), db: S
         v = getattr(body, f)
         if v:
             setattr(i, f, v)
-    if i.kind in ("problem", "proposal", "praise"):
-        author = db.get(User, body.author_id) if body.author_id else None
-        label = "" if author else f"Со слов на совещании{': ' + i.speaker if i.speaker else ''}"
-        a = workflow.register(db, text=i.text, author=author, author_label=label, source="meeting", type=i.kind,
-                              category_id=i.category_id, priority=i.priority, title=i.title or None,
-                              meeting_id=m.id, registrar=user)
-        if i.quote:
-            workflow.add_event(db, a, "comment", None, f"Из расшифровки совещания «{m.title}» ({m.held_at:%d.%m.%Y}): «{i.quote}»",
-                               internal=True)
-        i.appeal_id = a.id
-    i.state = "accepted"  # решения и поручения остаются в протоколе совещания
+    author = db.get(User, body.author_id) if body.author_id else None
+    meetings.accept_item(db, m, i, user, author)
     db.commit()
     return item_view(db, i)
 

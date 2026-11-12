@@ -165,7 +165,8 @@ def test_agent_discusses_then_submits(client):
     assert rpc(client, "notifications/initialized", key=key, id=None).status_code == 202
     assert client.get("/api/mcp").status_code == 405
     tools = {t["name"]: t for t in rpc(client, "tools/list", key=key).json()["result"]["tools"]}
-    assert {"get_guide", "draft_task", "submit_task", "find_similar", "list_tasks", "get_task", "support_task"} == set(tools)
+    assert {"get_guide", "draft_task", "submit_task", "find_similar", "list_tasks", "get_task", "support_task",
+            "get_channels", "connect_messenger", "disconnect_messenger"} == set(tools)  # совещаний и почты у сотрудника нет
     assert tools["draft_task"]["annotations"]["readOnlyHint"] and tools["submit_task"]["inputSchema"]["required"] == ["text"]
     # ключ в адресе - для клиентов, которые не передают заголовки
     assert client.post(f"/api/mcp/{key}", json={"jsonrpc": "2.0", "id": 7, "method": "ping"}).json() == {"jsonrpc": "2.0", "id": 7, "result": {}}
@@ -207,6 +208,125 @@ def test_agent_discusses_then_submits(client):
     assert rpc(client, "ping", key=key).status_code == 401 and rpc(client, "ping", key=key2).status_code == 200
     client.post("/api/me/agent/revoke", headers=emp)
     assert rpc(client, "ping", key=key2).status_code == 401
+
+
+def agent_key(client, who):
+    return client.post("/api/me/agent/key", headers=login(client, who)).json()["key"]
+
+
+def wait_meeting(client, key, meeting_id):
+    import time
+    for _ in range(100):
+        m, _ = call(client, key, "get_meeting", {"meeting_id": meeting_id})
+        if m["status"] in ("ready", "error"):
+            return m
+        time.sleep(0.1)
+    raise AssertionError(m)
+
+
+MEETING = ("[00:00] Коллеги, начнем планерку.\n[00:10] У нас проблема: заявки от продаж приходят без сроков поставки, "
+           "закупки каждый раз переспрашивают.\n[00:30] Предлагаю добавить в заявку обязательное поле со сроком и объектом.\n"
+           "[00:50] Решили: Данияр готовит шаблон заявки к пятнице.\n")
+
+
+def test_agent_meetings(client):
+    import base64
+    emp, mgr = agent_key(client, "sales"), agent_key(client, "napr")
+    # совещания - только тем, кто рассматривает обращения, как в интерфейсе
+    assert "add_meeting" not in {t["name"] for t in rpc(client, "tools/list", key=emp).json()["result"]["tools"]}
+    assert call(client, emp, "list_meetings")[1]["isError"]
+    names = {t["name"] for t in rpc(client, "tools/list", key=mgr).json()["result"]["tools"]}
+    assert {"list_meetings", "add_meeting", "get_meeting", "accept_meeting_item", "reject_meeting_item", "retry_meeting"} <= names
+    assert "intake_email" not in names
+    assert "add_meeting" in rpc(client, "initialize", key=mgr).json()["result"]["instructions"]
+    skill = client.get("/api/me/agent", headers=login(client, "napr")).json()["skill"]
+    assert "accept_meeting_item" in skill and "connect_messenger" in skill and "intake_email" not in skill
+
+    # неверные источники
+    assert call(client, mgr, "add_meeting", {"title": "Пусто"})[1]["isError"]
+    assert call(client, mgr, "add_meeting", {"title": "Два", "transcript": MEETING, "file_url": "https://example.com/a.txt"})[1]["isError"]
+    _, r = call(client, mgr, "add_meeting", {"title": "Внутренняя", "file_url": "http://127.0.0.1:8000/a.mp3"})
+    assert r["isError"] and "внутреннюю сеть" in r["content"][0]["text"]
+    assert call(client, mgr, "add_meeting", {"title": "Без имени", "file_base64": "aGVsbG8="})[1]["isError"]
+
+    m, _ = call(client, mgr, "add_meeting", {"title": "Планерка закупок", "held_at": "2026-11-10", "transcript": MEETING})
+    assert m["held_at"] == "10.11.2026"
+    m = wait_meeting(client, mgr, m["meeting_id"])
+    assert m["status"] == "ready", m
+    assert {"problem", "proposal", "decision"} <= {i["kind"] for i in m["items"]}
+    problem = next(i for i in m["items"] if i["kind"] == "problem")
+    assert problem["becomes_task"] and problem["assignee"] and problem["sla_days"] > 0 and problem["state"] == "draft"
+    assert "transcript" not in m and call(client, mgr, "get_meeting", {"meeting_id": m["meeting_id"], "transcript": True})[0]["transcript"] == MEETING.strip()
+
+    # подтвердить от имени сотрудника - обращение уходит по маршруту
+    assert call(client, mgr, "accept_meeting_item", {"item_id": problem["item_id"], "author": "Нет Такого"})[1]["isError"]
+    done, _ = call(client, mgr, "accept_meeting_item", {"item_id": problem["item_id"], "author": "sales@modus.demo",
+                                                        "priority": "high", "category": "Договорная работа"})
+    assert done["state"] == "accepted" and done["task"]["number"].startswith("A-") and "calendar.google.com" in done["calendar_url"]
+    assert done["task"]["priority"] == "Высокий" and done["task"]["assignee"] == "Алия Сарсенова"
+    mine, _ = call(client, emp, "list_tasks", {"scope": "mine"})
+    assert mine["tasks"][0]["number"] == done["task"]["number"]
+    assert call(client, mgr, "accept_meeting_item", {"item_id": problem["item_id"]})[1]["isError"]  # уже обработан
+
+    decision = next(i for i in m["items"] if i["kind"] == "decision")
+    kept, _ = call(client, mgr, "accept_meeting_item", {"item_id": decision["item_id"]})
+    assert kept["task"] is None and "протоколе" in kept["message"]
+    proposal = next(i for i in m["items"] if i["kind"] == "proposal")
+    assert call(client, mgr, "reject_meeting_item", {"item_id": proposal["item_id"]})[0]["state"] == "rejected"
+
+    # чужое совещание руководитель не видит, директор видит
+    other = agent_key(client, "it")
+    assert call(client, other, "get_meeting", {"meeting_id": m["meeting_id"]})[1]["isError"]
+    assert call(client, other, "accept_meeting_item", {"item_id": proposal["item_id"]})[1]["isError"]
+    director = agent_key(client, "director")
+    assert any(x["meeting_id"] == m["meeting_id"] for x in call(client, director, "list_meetings")[0]["meetings"])
+
+    # файл протокола в base64 и повторный разбор
+    f, _ = call(client, mgr, "add_meeting", {"title": "Протокол файлом", "filename": "протокол.txt",
+                                             "file_base64": base64.b64encode(MEETING.encode("cp1251")).decode()})
+    f = wait_meeting(client, mgr, f["meeting_id"])
+    assert f["status"] == "ready" and f["file"] == "протокол.txt" and f["items_total"] >= 3
+    again, _ = call(client, mgr, "retry_meeting", {"meeting_id": f["meeting_id"]})
+    assert wait_meeting(client, mgr, again["meeting_id"])["status"] == "ready"
+
+
+def test_record_split_for_speech_api(monkeypatch):
+    """Запись от агента распознается на сервере кусками по 2 минуты, как в браузере, с метками времени."""
+    from app import meetings
+    sent = []
+    monkeypatch.setattr(meetings, "_pcm", lambda path: b"\0" * (16000 * 2 * 250))  # 4 мин 10 с
+    monkeypatch.setattr(meetings, "transcribe_api", lambda audio, name, prev: sent.append((len(audio), prev)) or f"кусок {len(sent)}")
+    text = meetings.transcribe_api_file("x.mp3")
+    assert text == "[00:00] кусок 1\n[02:00] кусок 2\n[04:00] кусок 3"
+    assert all(n <= meetings.MAX_API_PART for n, _ in sent) and sent[1][1] == "[00:00] кусок 1"
+
+
+def test_agent_channels(client, monkeypatch):
+    from app import bots
+    emp, admin = agent_key(client, "sales"), agent_key(client, "admin")
+    ch, _ = call(client, emp, "get_channels")
+    assert ch["messengers"] == [] and ch["email"]["address"] is None and "admin" not in ch
+    assert call(client, emp, "connect_messenger", {"messenger": "telegram"})[1]["isError"]  # бот не запущен
+    assert call(client, emp, "connect_messenger", {"messenger": "icq"})[1]["isError"]
+
+    tg = bots.channels()["telegram"]
+    monkeypatch.setattr(tg, "state", {"enabled": True, "username": "modus_test_bot", "error": "", "link": ""})
+    link, _ = call(client, emp, "connect_messenger", {})
+    assert link["bot"] == "modus_test_bot" and link["code"] in link["link"] and not link["already_linked"]
+    ch, _ = call(client, emp, "get_channels")
+    assert ch["messengers"][0] == {"messenger": "telegram", "title": "Telegram", "working": True, "bot": "modus_test_bot", "linked": False}
+    assert call(client, emp, "disconnect_messenger", {"messenger": "telegram"})[1]["isError"]  # и так не привязан
+
+    # почта: письмо регистрируется как обращение, автор - по адресу
+    assert call(client, emp, "intake_email", {"sender": "sales@modus.demo", "body": "x" * 30})[1]["isError"]
+    assert {"intake_email", "check_mailbox"} <= {t["name"] for t in rpc(client, "tools/list", key=admin).json()["result"]["tools"]}
+    got, _ = call(client, admin, "intake_email", {"sender": "Артем Белов <sales@modus.demo>", "subject": "Fwd: Счета",
+                                                   "body": "Счета поставщиков приходят в личную почту и теряются.\n\n-- \nАртем"})
+    assert got["number"].startswith("A-") and got["author"] == "Артем Белов"
+    task, _ = call(client, emp, "get_task", {"number": got["number"]})
+    assert task["text"] == "Счета поставщиков приходят в личную почту и теряются."  # тема в тексте уже есть, подпись отрезана
+    assert call(client, admin, "check_mailbox")[1]["isError"]  # ящик в тестах не настроен
+    assert "admin" in call(client, admin, "get_channels")[0]
 
 
 def test_links_follow_request_address(client):
