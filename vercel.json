@@ -4,15 +4,8 @@
   "installCommand": "npm ci --prefix frontend",
   "buildCommand": "npm run build --prefix frontend",
   "outputDirectory": "frontend/dist",
-  "functions": {
-    "api/index.py": {
-      "maxDuration": 120,
-      "includeFiles": "{api/demo.db,backend/app/**}",
-      "excludeFiles": "{frontend/**,demo/**,backend/tests/**,backend/data/**,backend/.venv/**,**/node_modules/**}"
-    }
-  },
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/api/:path*", "destination": "https://modus-otklik-production.up.railway.app/api/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "headers": [
