@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 
 from .config import UPLOAD_DIR, settings
 from .db import session_scope
-from .models import FINAL, STATUSES, TYPES, Appeal, Attachment, Category, Event, User, now
+from .models import FINAL, MIN_TEXT, STATUSES, TYPES, Appeal, Attachment, Category, Event, User, now
 
 log = logging.getLogger("bots")
 
@@ -888,7 +888,7 @@ class Dialog:
 
     def draft_make(self, text: str, files: list[dict], keep: dict | None = None) -> None:
         from . import ai, workflow
-        if len(text.strip()) < 20:
+        if len(text.strip()) < MIN_TEXT:
             self.say(SHORT)
             return
         t, _ = ai.triage(text, workflow.categories_for_ai(self.db))

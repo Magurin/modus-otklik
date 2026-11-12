@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from . import ai, bots, mail, meetings, orgsync, workflow
 from .config import UPLOAD_DIR, settings
 from .db import get_db
-from .models import (FINAL, PRIORITIES, ROLES, SOURCES, STATUSES, TYPES, Appeal, Attachment, Category, Department,
+from .models import (FINAL, MIN_TEXT, PRIORITIES, ROLES, SOURCES, STATUSES, TYPES, Appeal, Attachment, Category, Department,
                      Digest, Event, Meeting, MeetingItem, Notification, OrgSync, User, now)
 from .security import admin_only, check_init_data, check_password, current_user, handler, make_token, overseer
 
@@ -283,8 +283,8 @@ def create_appeal(text: str = Form(...), type: str = Form(""), category_id: int 
                   priority: str = Form(""), title: str = Form(""), solution: str = Form(""),
                   anonymous: bool = Form(False), files: list[UploadFile] = File(default=[]),
                   user: User = Depends(current_user), db: Session = Depends(get_db)):
-    if len(text.strip()) < 20:
-        bad("Опишите подробнее - хотя бы пару предложений")
+    if len(text.strip()) < MIN_TEXT:
+        bad(f"Опишите подробнее - хотя бы {MIN_TEXT} символов")
     if type and type not in TYPES:
         bad("Неизвестный тип обращения")
     if priority and priority not in PRIORITIES:

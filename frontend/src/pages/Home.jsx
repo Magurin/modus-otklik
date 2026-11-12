@@ -8,6 +8,9 @@ import HomeFlow from '../HomeFlow.jsx'
 import Select, { fromList, fromMap } from '../Select.jsx'
 import { AppealItem, ErrorNote, Spinner, StatusPill, useApp, useLoad } from '../ui.jsx'
 
+const MIN_TEXT = 5 // как в backend/app/models.py
+const plural = (n) => (n % 10 === 1 && n % 100 !== 11 ? 'символ' : [2, 3, 4].includes(n % 10) && ![12, 13, 14].includes(n % 100) ? 'символа' : 'символов')
+
 export default function Home() {
   const nav = useNavigate()
   const [rows, , error] = useLoad(() => api.get('/appeals?scope=mine'), [])
@@ -86,7 +89,8 @@ export function Composer() {
 
   const set = (k) => (v) => { setForm({ ...form, [k]: v }); setTouched({ ...touched, [k]: true }) }
   const cat = meta.categories.find((c) => String(c.id) === String(form.category_id))
-  const ready = text.trim().length >= 20
+  const left = MIN_TEXT - text.trim().length
+  const ready = left <= 0
 
   const submit = () => {
     if (!ready || busy) return
@@ -166,6 +170,7 @@ export function Composer() {
           <button type="button" className={`btn ghost sm ${anonymous ? 'on' : ''}`} onClick={() => setAnonymous(!anonymous)} aria-pressed={anonymous}
             title="Имя и отдел не увидит никто, включая администратора"><EyeOff size={16} /> Анонимно</button>
           <span className="grow" />
+          {text.trim() && !ready && <span className="small muted" aria-live="polite">Еще {left} {plural(left)}</span>}
           <button className="send" disabled={!ready || busy} onClick={submit} aria-label="Отправить" title="Отправить - Enter">
             {busy ? <Loader2 size={18} className="spin" /> : <ArrowUp size={19} />}
           </button>

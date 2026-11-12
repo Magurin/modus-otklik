@@ -205,7 +205,7 @@ def test_messenger_dialog(client):
     assert next(m for m in client.get("/api/me/messengers", headers=emp).json() if m["key"] == "max")["linked"]
 
     # текст становится черновиком: до подтверждения обращение не создается
-    assert "подробнее" in me.write("коротко")
+    assert "подробнее" in me.write("ой")
     before = len(client.get("/api/appeals?scope=mine", headers=emp).json())
     card = me.write("На объекте не хватает актуальных схем подключения, монтажники звонят проектировщикам по каждому вопросу.")
     assert "Черновик обращения" in card and "Рассмотрит:" in card

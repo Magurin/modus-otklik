@@ -24,6 +24,7 @@ STATUSES = {
     "closed": "Закрыто",
 }
 FINAL = {"done", "rejected", "closed"}
+MIN_TEXT = 5  # короче обращение не принимаем: из одного слова не понять, о чем речь
 TYPES = {"problem": "Проблема", "proposal": "Предложение", "praise": "Положительный отзыв"}
 PRIORITIES = {"low": "Низкий", "medium": "Средний", "high": "Высокий"}
 SOURCES = {"web": "Форма", "telegram": "Telegram", "max": "MAX", "email": "Почта", "meeting": "Совещание", "import": "Импорт"}
