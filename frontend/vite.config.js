@@ -8,6 +8,13 @@ export default defineConfig({
     host: '127.0.0.1',
     port: Number(process.env.VITE_PORT || 5180),
     strictPort: true,
-    proxy: { '/api': process.env.VITE_API || 'http://127.0.0.1:8010' },
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API || 'http://127.0.0.1:8010',
+        changeOrigin: true,
+        // бэкенд строит ссылки по адресу, на который пришел запрос: передаем ему адрес фронтенда, а не свой порт
+        configure: (proxy) => proxy.on('proxyReq', (req, src) => req.setHeader('X-Forwarded-Host', src.headers.host)),
+      },
+    },
   },
 })

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import os
 import secrets
+from contextvars import ContextVar
 from pathlib import Path
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
@@ -48,6 +49,7 @@ class Settings:
     jwt_secret = _env("JWT_SECRET") or _secret("jwt.secret")
     demo_login = _env("DEMO_LOGIN", "1") == "1"  # быстрый вход под демо-ролями на экране логина
     app_url = _env("APP_URL", "http://127.0.0.1:5180")
+    app_url_set = bool(_env("APP_URL"))  # не задан - ссылки строим по адресу, с которого пришел запрос
 
     # ИИ: auto - модель, если задан ключ (Claude, иначе OpenAI), без ключа - правила; rules - всегда правила (офлайн)
     ai_mode = _env("AI_MODE", "auto")
@@ -88,6 +90,11 @@ class Settings:
     org_sync_hours = int(_env("ORG_SYNC_HOURS", "6"))
     mocks = _env("MOCKS", "1") == "1"                        # отдавать эмуляторы 1С и Битрикс24 по /mock/...
 
+    # Google Календарь: OAuth-клиент типа «Веб-приложение» (console.cloud.google.com), адрес возврата -
+    # <APP_URL>/api/calendar/google/callback. Без ключей остается ссылка «добавить в календарь» в карточке обращения
+    google_client_id = _env("GOOGLE_CLIENT_ID")
+    google_client_secret = _env("GOOGLE_CLIENT_SECRET")
+
     serverless = SERVERLESS
     background = _env("BACKGROUND", "0" if SERVERLESS else "1") == "1"  # фоновые задачи: бот, почта, контроль сроков
     first_response_hours = int(_env("FIRST_RESPONSE_HOURS", "48"))
@@ -109,6 +116,10 @@ class Settings:
         return "local" if mode == "local" and not SERVERLESS else ""
 
     @property
+    def google_enabled(self) -> bool:
+        return bool(self.google_client_id and self.google_client_secret)
+
+    @property
     def llm_enabled(self) -> bool:
         return bool(self.llm_provider)
 
@@ -118,3 +129,14 @@ class Settings:
 
 
 settings = Settings()
+
+# Адрес, по которому пришел текущий запрос (заполняет main.py). Нужен, когда APP_URL не задан:
+# локально фронтенд может работать на любом порту, и ссылки в ответах должны вести туда же
+request_base: ContextVar[str] = ContextVar("request_base", default="")
+
+
+def public_url() -> str:
+    """Публичный адрес приложения для ссылок: APP_URL, иначе адрес текущего запроса, иначе значение по умолчанию."""
+    if settings.app_url_set:
+        return settings.app_url.rstrip("/")
+    return (request_base.get() or settings.app_url).rstrip("/")

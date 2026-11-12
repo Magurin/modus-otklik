@@ -210,7 +210,9 @@ export function AppealDetail() {
             <Fact k="Категория">{a.category || <span className="muted">нет</span>}</Fact>
             {a.closed_at ? <Fact k="Закрыто">{day(a.closed_at)}</Fact>
               : <Fact k="Срок">{day(a.due_at)}{/* «сегодня» и «завтра» говорят сами за себя - остаток дней к ним не дописываем */}
-                {(a.overdue || daysLeft(a) > 1) && <span className="small muted"> · {dueText(a)}</span>}</Fact>}
+                {(a.overdue || daysLeft(a) > 1) && <span className="small muted"> · {dueText(a)}</span>}
+                {a.in_calendar ? <div className="small muted">в вашем Google Календаре</div>
+                  : a.calendar_url && <div className="small"><a href={a.calendar_url} target="_blank" rel="noreferrer">в Google Календарь</a></div>}</Fact>}
             {a.can.handle && <Fact k="Приоритет">{meta.priorities[a.priority]}</Fact>}
             {a.can.handle && <Fact k="Канал">{meta.sources[a.source]}{a.meeting_id && <div className="small"><Link to={`/meetings/${a.meeting_id}`}>открыть совещание</Link></div>}</Fact>}
           </div>

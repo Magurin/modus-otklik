@@ -6,14 +6,14 @@ import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import bots, mail, mocks, orgsync, workflow
+from . import bots, mail, mcp, mocks, orgsync, workflow
 from .api import router
-from .config import BACKEND_DIR, settings
+from .config import BACKEND_DIR, request_base, settings
 from sqlalchemy import select
 
 from .db import session_scope
@@ -57,7 +57,24 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="Модус.Отклик - обратная связь сотрудников", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=["http://127.0.0.1:5180", "http://localhost:5180"],
                    allow_methods=["*"], allow_headers=["*"])
+
+
+@app.middleware("http")
+async def remember_base(request: Request, call_next):
+    """Запомнить адрес, по которому пришел запрос: из него строятся ссылки, если APP_URL не задан.
+    За прокси (vite, Railway) учитываем X-Forwarded-*, иначе ссылки вели бы на внутренний порт."""
+    h = request.headers
+    host = h.get("x-forwarded-host") or h.get("host") or request.url.netloc
+    proto = h.get("x-forwarded-proto") or request.url.scheme
+    token = request_base.set(f"{proto.split(',')[0].strip()}://{host.split(',')[0].strip()}")
+    try:
+        return await call_next(request)
+    finally:
+        request_base.reset(token)
+
+
 app.include_router(router)
+app.include_router(mcp.router)  # общий список обращений как инструмент ИИ-агентов
 if settings.mocks:  # эмуляторы 1С и Битрикс24: можно открыть в браузере или указать их адрес в ONEC_ODATA_URL / BITRIX_WEBHOOK_URL
     app.include_router(mocks.router)
 

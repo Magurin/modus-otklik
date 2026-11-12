@@ -7,17 +7,18 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from . import ai, bots, mail, meetings, orgsync, workflow
-from .config import UPLOAD_DIR, settings
+from . import ai, bots, gcal, mail, meetings, orgsync, workflow
+from .config import UPLOAD_DIR, public_url, settings
 from .db import get_db
 from .models import (FINAL, MIN_TEXT, PRIORITIES, ROLES, SOURCES, STATUSES, TYPES, Appeal, Attachment, Category, Department,
                      Digest, Event, Meeting, MeetingItem, Notification, OrgSync, User, now)
-from .security import admin_only, check_init_data, check_password, current_user, handler, make_token, overseer
+from .security import (admin_only, check_init_data, check_password, current_user, handler, make_state, make_token,
+                       overseer, read_state)
 
 router = APIRouter(prefix="/api")
 MAX_FILE = 20 * 1024 * 1024
@@ -96,6 +97,9 @@ def appeal_detail(db: Session, a: Appeal, viewer: User) -> dict:
         "similar": sim, "meeting_id": a.meeting_id if can_handle else None,
         "open_question": {"text": open_q.text, "by_ai": bool(open_q.data.get("by_ai"))} if open_q else None,
         "supported": any(s.user_id == viewer.id for s in a.supports), "rating": a.rating,
+        # срок полосой в Google Календаре: ссылка в один клик и отметка, что событие уже ведется автоматически
+        "calendar_url": gcal.template_url(a) if a.due_at and a.status not in FINAL else None,
+        "in_calendar": str(viewer.id) in (a.gcal or {}),
         "can": {"handle": can_handle, "answer": is_author and open_q is not None, "comment": can_handle or is_author,
                 "support": not is_author and a.status not in FINAL,
                 "rate": is_author and a.status == "done" and not a.rating,
@@ -220,6 +224,46 @@ def messenger_unlink(key: str, user: User = Depends(current_user), db: Session =
     setattr(user, ch.user_field, None)
     db.commit()
     return {"ok": True}
+
+
+# ---------- Google Календарь ----------
+
+def calendar_view(user: User) -> dict:
+    return {"configured": settings.google_enabled, "connected": bool(user.gcal), "email": (user.gcal or {}).get("email", "")}
+
+
+@router.get("/me/calendar")
+def my_calendar(user: User = Depends(current_user)):
+    return calendar_view(user)
+
+
+@router.post("/me/calendar/connect")
+def calendar_connect(user: User = Depends(current_user)):
+    """Адрес страницы согласия Google. Вернувшись с нее, сотрудник попадает в calendar_callback."""
+    if not settings.google_enabled:
+        bad("Подключение Google Календаря не настроено - добавляйте обращения ссылкой из карточки")
+    return {"url": gcal.auth_url(make_state(user, "gcal"))}
+
+
+@router.get("/calendar/google/callback", include_in_schema=False)
+def calendar_callback(code: str = "", state: str = "", db: Session = Depends(get_db)):
+    back = f"{public_url()}/profile?calendar="
+    user = db.get(User, read_state(state, "gcal") or 0)
+    if not user or not user.active or not code or not settings.google_enabled:
+        return RedirectResponse(back + "denied")
+    try:
+        gcal.connect(db, user, code)
+    except gcal.CalendarError:
+        return RedirectResponse(back + "error")
+    return RedirectResponse(back + "ok")
+
+
+@router.post("/me/calendar/disconnect")
+def calendar_disconnect(user: User = Depends(current_user), db: Session = Depends(get_db)):
+    if user.gcal:
+        gcal.disconnect(db, user)
+        db.commit()
+    return calendar_view(user)
 
 
 @router.get("/meta")

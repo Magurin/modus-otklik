@@ -221,9 +221,10 @@ def migrate() -> None:
     """Добавить колонки, появившиеся после первого запуска (SQLite сам таблицы не обновляет)."""
     from sqlalchemy import inspect, text
     added = {
-        "users": {"max_user_id": "VARCHAR(40)", "bot_state": "JSON", "bot_prefs": "JSON", "ext_ids": "JSON"},
+        "users": {"max_user_id": "VARCHAR(40)", "bot_state": "JSON", "bot_prefs": "JSON", "ext_ids": "JSON",
+                  "gcal": "JSON", "agent_key_hash": "VARCHAR(64)"},
         "departments": {"ext_ids": "JSON"},
-        "appeals": {"rating": "INTEGER", "reminded_at": "DATETIME"},
+        "appeals": {"rating": "INTEGER", "reminded_at": "DATETIME", "gcal": "JSON"},
     }
     for table, columns in added.items():
         have = {c["name"] for c in inspect(engine).get_columns(table)}

@@ -40,6 +40,30 @@ def make_token(user: User) -> str:
     return jwt.encode({"sub": str(user.id), "exp": exp}, settings.jwt_secret, algorithm="HS256")
 
 
+def make_state(user: User, purpose: str, minutes: int = 15) -> str:
+    """Короткоживущая подпись для возврата из внешней системы (OAuth): кто начал подключение."""
+    exp = datetime.now(timezone.utc) + timedelta(minutes=minutes)
+    return jwt.encode({"sub": str(user.id), "exp": exp, "for": purpose}, settings.jwt_secret, algorithm="HS256")
+
+
+def read_state(state: str, purpose: str) -> int | None:
+    try:
+        data = jwt.decode(state, settings.jwt_secret, algorithms=["HS256"])
+        return int(data["sub"]) if data.get("for") == purpose else None
+    except Exception:
+        return None
+
+
+def new_agent_key() -> tuple[str, str]:
+    """Личный ключ для ИИ-агента и его отпечаток. В базе хранится только отпечаток, сам ключ показывается один раз."""
+    key = "mok_" + secrets.token_urlsafe(24)
+    return key, agent_key_hash(key)
+
+
+def agent_key_hash(key: str) -> str:
+    return hashlib.sha256(key.encode()).hexdigest()
+
+
 def check_init_data(init_data: str, bot_token: str, max_age: int = 24 * 3600) -> dict | None:
     """Проверить данные запуска Telegram Mini App и вернуть пользователя Telegram (или None).
 

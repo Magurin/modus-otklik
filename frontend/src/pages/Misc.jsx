@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { CheckCircle2, ChevronRight, LayoutList, LogOut, Send, Settings, Users } from 'lucide-react'
 import { api } from '../api.js'
 import { Avatar, Empty, ErrorNote, Spinner, Status, day, useApp, useLoad } from '../ui.jsx'
+import { AgentCard, CalendarCard } from './Connections.jsx'
 
 export function Improvements() {
   const [rows, , error] = useLoad(() => api.get('/improvements'), [])
@@ -105,6 +106,8 @@ export function Profile() {
             {list ? list.map((m) => <Messenger key={m.key} m={m} onChange={reload} />) : !error && <Spinner />}
           </div>
         )}
+        <CalendarCard />
+        <AgentCard />
         <PhoneSections />
         <div className="no-tg"><button className="btn ghost" onClick={logout}><LogOut size={16} /> Выйти</button></div>
       </div>

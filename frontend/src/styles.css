@@ -566,3 +566,10 @@ table.tbl td b { font-weight: var(--fw-semibold); }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* Настройка для копирования: команда или файл подключения ИИ-агента */
+.codebox { margin: 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); border: 1px solid var(--line);
+  font: 12.5px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+details.skill > summary { cursor: pointer; color: var(--ink-2); font-size: var(--fs-small); user-select: none; }
+details.skill > summary:hover { color: var(--ink); }
+details.skill > .codebox { margin-top: var(--s-2); max-height: 340px; overflow: auto; }

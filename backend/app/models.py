@@ -27,7 +27,7 @@ FINAL = {"done", "rejected", "closed"}
 MIN_TEXT = 5  # короче обращение не принимаем: из одного слова не понять, о чем речь
 TYPES = {"problem": "Проблема", "proposal": "Предложение", "praise": "Положительный отзыв"}
 PRIORITIES = {"low": "Низкий", "medium": "Средний", "high": "Высокий"}
-SOURCES = {"web": "Форма", "telegram": "Telegram", "max": "MAX", "email": "Почта", "meeting": "Совещание", "import": "Импорт"}
+SOURCES = {"web": "Форма", "telegram": "Telegram", "max": "MAX", "email": "Почта", "meeting": "Совещание", "agent": "ИИ-агент", "import": "Импорт"}
 ROLES = {"employee": "Сотрудник", "manager": "Руководитель", "director": "Директор", "admin": "Администратор"}
 
 
@@ -58,6 +58,8 @@ class User(Base):
     bot_prefs: Mapped[dict | None] = mapped_column(JSON, nullable=True)   # настройки уведомлений в боте и отметка об отправленной сводке
     active: Mapped[bool] = mapped_column(Boolean, default=True)
     ext_ids: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # id во внешних системах: 1С, Битрикс24, файл выгрузки
+    gcal: Mapped[dict | None] = mapped_column(JSON, nullable=True)     # подключенный Google Календарь: {"refresh_token", "email"}
+    agent_key_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)  # sha256 личного ключа для ИИ-агентов (MCP)
 
     department: Mapped[Department | None] = relationship(foreign_keys=[department_id])
     deputy: Mapped["User | None"] = relationship(remote_side=[id], foreign_keys=[deputy_id])
@@ -104,6 +106,7 @@ class Appeal(Base):
     ai_filled: Mapped[bool] = mapped_column(Boolean, default=False)  # тип/категорию определил ИИ, человек не проверял
     rating: Mapped[int | None] = mapped_column(Integer, nullable=True)  # оценка автора после «Реализовано»: 1 - решено, -1 - нет
     reminded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # когда напомнили о подходящем сроке
+    gcal: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # события в Google Календарях: {id сотрудника: {"id", "h"}}
 
     author: Mapped[User | None] = relationship(foreign_keys=[author_id])
     assignee: Mapped[User | None] = relationship(foreign_keys=[assignee_id])
