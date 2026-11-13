@@ -28,6 +28,9 @@ export function CalendarCard() {
   }).catch((e) => setErr(e.message))
   const disconnect = () => api.post('/me/calendar/disconnect').then(setC).catch((e) => setErr(e.message))
 
+  // пока Google на сервере не настроен, подключать нечего - карточку не показываем
+  if (!c || (!c.configured && !c.connected)) return null
+
   return (
     <div className="card pad stack tight">
       <div className="row spread wrap">
@@ -35,18 +38,13 @@ export function CalendarCard() {
           <div style={{ minWidth: 0 }}><b style={{ fontWeight: 600 }}>Google Календарь</b>
             <div className="small muted">{c?.connected ? c.email || 'подключен' : 'Обращение - полосой на весь срок, от регистрации до дедлайна'}</div></div>
         </div>
-        {!c ? !error && <Spinner />
-          : c.connected ? <div className="row wrap"><Status dot="ok">подключен</Status><button className="btn sm ghost" onClick={disconnect}>Отключить</button></div>
-            : c.configured ? <button className="btn sm" onClick={connect}>Подключить</button>
-              : <Status>по ссылке</Status>}
+        {c.connected ? <div className="row wrap"><Status dot="ok">подключен</Status><button className="btn sm ghost" onClick={disconnect}>Отключить</button></div>
+          : <button className="btn sm" onClick={connect}>Подключить</button>}
       </div>
-      {c && !c.connected && (
-        <div className="small muted">
-          {c.configured ? 'После подключения ваши обращения и те, за которые вы отвечаете, появятся в календаре сами. Перенесут срок - полоса сдвинется.'
-            : 'Добавляйте обращения в календарь ссылкой рядом со сроком в карточке обращения.'}
-        </div>
+      {!c.connected && (
+        <div className="small muted">После подключения ваши обращения и те, за которые вы отвечаете, появятся в календаре сами. Перенесут срок - полоса сдвинется.</div>
       )}
-      {waiting && !c?.connected && (
+      {waiting && !c.connected && (
         <div className="note"><CalendarDays size={16} /><div>Разрешите доступ в открывшемся браузере и вернитесь сюда
           <div><button className="btn sm ghost" style={{ marginTop: 6, marginLeft: -10 }} onClick={reload}>Готово, проверить</button></div>
         </div></div>
