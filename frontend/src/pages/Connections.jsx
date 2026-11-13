@@ -124,7 +124,6 @@ export function AgentCard() {
             <button className="btn primary" onClick={copyPrompt}>
               {copied === 'prompt' ? <Check size={16} /> : <Bot size={16} />} {copied === 'prompt' ? 'Промпт скопирован' : 'Копировать промпт для агента'}
             </button>
-            {a.enabled && <Status dot="ok">ключ выдан</Status>}
             {a.enabled && <button className="btn sm ghost" onClick={reissue}>Новый ключ</button>}
             {a.enabled && <button className="btn sm ghost" onClick={revoke}>Отозвать</button>}
           </div>
