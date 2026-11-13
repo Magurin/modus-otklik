@@ -280,12 +280,6 @@ await click(page.getByRole('button', { name: 'Принять письмо' }), 4
 await page.locator('.note.green').waitFor({ timeout: 60000 })
 await cap('Письмо стало обращением: автор найден по адресу, категория подобрана')
 await sleep(2600)
-await click(page.locator('.tabs button', { hasText: 'Дизайн-система' }), 1200)
-await cap('Интерфейс построен на единой дизайн-системе')
-await scroll(1500, 110)
-await sleep(800)
-await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'smooth' }))
-await sleep(700)
 
 // ---------- 11. Финал ----------
 await logout()

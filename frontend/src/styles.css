@@ -495,23 +495,7 @@ table.tbl td b { font-weight: var(--fw-semibold); }
 .login-card .search { margin: 0 var(--s-1) var(--s-1); }
 .login-card form { padding: var(--s-2) var(--s-3) var(--s-3); }
 
-/* ================= 16. Справочник дизайн-системы ================= */
-.ds-section { display: flex; flex-direction: column; gap: var(--s-4); }
-.ds-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: var(--s-2); }
-.ds-sw { display: flex; flex-direction: column; gap: var(--s-1); font-size: 11px; line-height: 15px; color: var(--muted); }
-.ds-sw i { height: 44px; border-radius: var(--r-sm); border: 1px solid var(--line); display: block; }
-.ds-sw b { color: var(--ink); font-weight: var(--fw-medium); font-size: var(--fs-caption); }
-.ds-type { display: grid; grid-template-columns: 150px 1fr; gap: var(--s-2) var(--s-4); align-items: baseline; }
-.ds-space { display: flex; align-items: flex-end; gap: var(--s-4); flex-wrap: wrap; }
-.ds-space div { display: flex; flex-direction: column; align-items: center; gap: var(--s-1); font-size: 11px; color: var(--muted); }
-.ds-space i { background: var(--a-200); display: block; height: 20px; border-radius: 2px; }
-.ds-radius { display: flex; gap: var(--s-4); flex-wrap: wrap; }
-.ds-radius div { display: flex; flex-direction: column; align-items: center; gap: var(--s-1); font-size: 11px; color: var(--muted); }
-.ds-radius i { width: 56px; height: 56px; background: var(--fill); border: 1px solid var(--line-strong); display: block; }
-.ds-rule { display: grid; grid-template-columns: 28px 1fr; gap: var(--s-3); align-items: baseline; }
-.ds-rule .n { font-weight: var(--fw-bold); color: var(--muted); font-variant-numeric: tabular-nums; }
-
-/* ================= 17. Адаптив ================= */
+/* ================= 16. Адаптив ================= */
 /* средняя ширина: навигация сворачивается в значки, колонки складываются */
 @media (max-width: 1080px) {
   :root { --nav-w: 64px; }
@@ -544,7 +528,6 @@ table.tbl td b { font-weight: var(--fw-semibold); }
   .card.pad { padding: var(--s-5); }
   .card-head, .card-body { padding-left: var(--s-5); padding-right: var(--s-5); }
   .step { font-size: 10.5px; letter-spacing: -.01em; padding: 0 1px; }
-  .ds-type { grid-template-columns: minmax(0, 1fr); }
   .phone-only { display: block; }
   table.tbl td:first-child { min-width: 140px; }
   /* таблицы с полями ввода: каждая строка - карточка, подписи вместо заголовков столбцов */
