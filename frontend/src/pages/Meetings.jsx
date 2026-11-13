@@ -105,7 +105,7 @@ function UploadModal({ onClose, onDone }) {
           onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && input.current.click()}>
           {file ? <FileAudio size={28} /> : <Upload size={28} />}
           <b>{file ? file.name : speech ? 'Перетащите запись сюда или нажмите' : 'Перетащите протокол сюда или нажмите'}</b>
-          {!file && <span className="small">{speech === 'api' ? 'Аудио, видео, .txt или .docx · речь распознает OpenAI' : speech ? 'Аудио, видео, .txt или .docx' : '.txt или .docx · здесь записи не распознаются'}</span>}
+          {!file && <span className="small">{speech ? 'Аудио, видео, .txt или .docx' : '.txt или .docx · здесь записи не распознаются'}</span>}
           <input ref={input} type="file" hidden accept={speech ? 'audio/*,video/*,.txt,.md,.docx,.vtt,.srt,.oga,.opus' : '.txt,.md,.docx,.vtt,.srt'} onChange={(e) => pick(e.target.files[0])} />
         </div>
       ) : (
