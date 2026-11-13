@@ -44,7 +44,7 @@ def user_brief(u: User | None) -> dict | None:
 
 def user_full(u: User) -> dict:
     return {**user_brief(u), "email": u.email, "department_id": u.department_id, "deputy_id": u.deputy_id,
-            "telegram": bool(u.tg_chat_id), "max": bool(u.max_user_id), "active": u.active, "role_label": ROLES[u.role],
+            "telegram": bool(u.tg_chat_id), "active": u.active, "role_label": ROLES[u.role],
             "synced": sorted(u.ext_ids or {})}
 
 
@@ -980,8 +980,7 @@ def admin_channels(user: User = Depends(admin_only)):
     return {
         "ai": {"engine": ai.engine_name(), "enabled": settings.llm_enabled},
         "telegram": {**bots.channels()["telegram"].state, "configured": bool(settings.telegram_token)},
-        "max": {**bots.channels()["max"].state, "configured": bool(settings.max_token)},
-        "email": {**mail.state, "configured": bool(settings.imap_host), "address": settings.imap_user},
+        "email": {**mail.state, "configured": bool(settings.imap_host), "address": settings.imap_to or settings.imap_user},
         "whisper": {"model": settings.whisper_model},
     }
 

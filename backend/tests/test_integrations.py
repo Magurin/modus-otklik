@@ -329,6 +329,36 @@ def test_agent_channels(client, monkeypatch):
     assert "admin" in call(client, admin, "get_channels")[0]
 
 
+def test_mailbox_takes_only_feedback_address(client, monkeypatch):
+    """IMAP_TO: из общего ящика берутся только непрочитанные письма на адрес обратной связи."""
+    from app import mail
+
+    class Box:
+        searched = None
+
+        def __init__(self, host): pass
+        def login(self, user, password): pass
+        def select(self, folder): pass
+        def logout(self): pass
+
+        def search(self, charset, *criteria):
+            Box.searched = criteria
+            return "OK", [b"1"]
+
+        def fetch(self, num, what):
+            raw = ("From: Артем Белов <sales@modus.demo>\nTo: box+otklik@example.com\nSubject: Склад\n"
+                   "Content-Type: text/plain; charset=utf-8\n\nНакладные со склада приходят с опозданием на два дня.\n")
+            return "OK", [(b"1", raw.encode("utf-8"))]
+
+    monkeypatch.setattr(mail.imaplib, "IMAP4_SSL", Box)
+    monkeypatch.setattr(settings, "imap_to", "box+otklik@example.com")
+    assert mail.check_once() == 1
+    assert Box.searched == ("UNSEEN", "TO", '"box+otklik@example.com"')
+    monkeypatch.setattr(settings, "imap_to", "")
+    mail.check_once()
+    assert Box.searched == ("UNSEEN",)
+
+
 def test_links_follow_request_address(client):
     """APP_URL не задан - ссылки ведут туда, откуда пришел запрос (например, фронтенд на другом порту через прокси)."""
     emp = login(client, "sales")

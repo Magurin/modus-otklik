@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 418" role="img" aria-labelledby="t d">
   <title id="t">Путь обращения в Модус.Отклик</title>
-  <desc id="d">Веб-форма, Telegram и MAX, почта и запись совещания сходятся в единую регистрацию. Дальше: ИИ-разбор, маршрут с замещением, работа со сроком и историей, результат и аналитика.</desc>
+  <desc id="d">Веб-форма, Telegram, почта и запись совещания сходятся в единую регистрацию. Дальше: ИИ-разбор, маршрут с замещением, работа со сроком и историей, результат и аналитика.</desc>
   <defs>
     <marker id="ah" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto">
       <path d="M0 0.8 L10 5 L0 9.2 z" fill="#3358d4"/>
@@ -33,7 +33,7 @@
 
     <rect class="box" x="36" y="145" width="240" height="66" rx="16"/>
     <circle cx="58" cy="178" r="5" fill="#3358d4"/>
-    <text class="h" x="76" y="173">Telegram и MAX</text>
+    <text class="h" x="76" y="173">Telegram</text>
     <text class="s" x="76" y="193">текст, голос, фото, файлы</text>
 
     <rect class="box" x="36" y="228" width="240" height="66" rx="16"/>

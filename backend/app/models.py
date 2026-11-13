@@ -27,7 +27,7 @@ FINAL = {"done", "rejected", "closed"}
 MIN_TEXT = 5  # короче обращение не принимаем: из одного слова не понять, о чем речь
 TYPES = {"problem": "Проблема", "proposal": "Предложение", "praise": "Положительный отзыв"}
 PRIORITIES = {"low": "Низкий", "medium": "Средний", "high": "Высокий"}
-SOURCES = {"web": "Форма", "telegram": "Telegram", "max": "MAX", "email": "Почта", "meeting": "Совещание", "agent": "ИИ-агент", "import": "Импорт"}
+SOURCES = {"web": "Форма", "telegram": "Telegram", "email": "Почта", "meeting": "Совещание", "agent": "ИИ-агент", "import": "Импорт"}
 ROLES = {"employee": "Сотрудник", "manager": "Руководитель", "director": "Директор", "admin": "Администратор"}
 
 
@@ -51,8 +51,7 @@ class User(Base):
     is_absent: Mapped[bool] = mapped_column(Boolean, default=False)  # отпуск, командировка - обращения уходят заместителю
     deputy_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
     tg_chat_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
-    max_user_id: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
-    tg_link_code: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)   # код привязки любого мессенджера
+    tg_link_code: Mapped[str | None] = mapped_column(String(20), nullable=True, index=True)   # одноразовый код привязки бота
     tg_pending_appeal_id: Mapped[int | None] = mapped_column(Integer, nullable=True)  # ждем ответ на уточнение в боте
     bot_state: Mapped[dict | None] = mapped_column(JSON, nullable=True)   # незавершенный шаг диалога с ботом: черновик, ожидание текста
     bot_prefs: Mapped[dict | None] = mapped_column(JSON, nullable=True)   # настройки уведомлений в боте и отметка об отправленной сводке

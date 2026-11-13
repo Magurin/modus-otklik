@@ -156,22 +156,21 @@ MEETING_TOOLS = [
 ]
 CHANNEL_TOOLS = [
     {"name": "get_channels", "title": "Каналы связи",
-     "description": "Через что пользователь может подавать обращения и получать уведомления: боты Telegram и MAX "
+     "description": "Через что пользователь может подавать обращения и получать уведомления: бот в Telegram "
                     "(работает ли бот, привязан ли он у пользователя) и общий почтовый ящик для обращений письмом. "
                     "Администратору - еще состояние каждого канала и ошибки.",
      "inputSchema": {"type": "object", "properties": {}},
      "annotations": {"readOnlyHint": True}},
-    {"name": "connect_messenger", "title": "Привязать Telegram или MAX",
-     "description": "Получить одноразовую ссылку и код, чтобы привязать бота к учетной записи пользователя. "
+    {"name": "connect_messenger", "title": "Привязать Telegram",
+     "description": "Получить одноразовую ссылку и код, чтобы привязать Telegram-бота к учетной записи пользователя. "
                     "Отдай пользователю ссылку (link): он открывает ее и нажимает «Старт» - или отправляет боту код. "
                     "Потом проверь привязку через get_channels. Прежний код при этом перестает действовать.",
      "inputSchema": {"type": "object", "properties": {
-         "messenger": {**_text, "enum": ["telegram", "max"], "default": "telegram"}}},
+         "messenger": {**_text, "enum": ["telegram"], "default": "telegram"}}},
      "annotations": {"readOnlyHint": False, "destructiveHint": False, "idempotentHint": False}},
-    {"name": "disconnect_messenger", "title": "Отвязать Telegram или MAX",
-     "description": "Отвязать бота от учетной записи: уведомления туда больше не придут. Только с согласия пользователя.",
-     "inputSchema": {"type": "object", "properties": {"messenger": {**_text, "enum": ["telegram", "max"]}},
-                     "required": ["messenger"]},
+    {"name": "disconnect_messenger", "title": "Отвязать Telegram",
+     "description": "Отвязать Telegram-бота от учетной записи: уведомления туда больше не придут. Только с согласия пользователя.",
+     "inputSchema": {"type": "object", "properties": {"messenger": {**_text, "enum": ["telegram"], "default": "telegram"}}},
      "annotations": {"readOnlyHint": False, "destructiveHint": True, "idempotentHint": True}},
 ]
 ADMIN_TOOLS = [
@@ -200,7 +199,7 @@ MEETINGS_GUIDE = (
 
 
 CHANNELS_GUIDE = (
-    "Каналы: если пользователь хочет получать уведомления или писать в Telegram или MAX, вызови connect_messenger "
+    "Каналы: если пользователь хочет получать уведомления или писать в Telegram, вызови connect_messenger "
     "и отдай ему ссылку, затем проверь привязку через get_channels. Адрес ящика для обращений письмом - в get_channels."
 )
 
@@ -540,7 +539,7 @@ def retry_meeting(db: Session, user: User, args: dict) -> dict:
 def _messenger(key: Any):
     ch = bots.channels().get(str(key or "telegram").strip().lower())
     if not ch:
-        raise ToolError("Мессенджер - telegram или max")
+        raise ToolError("Подключается только Telegram (messenger: telegram)")
     return ch
 
 
@@ -550,12 +549,11 @@ def get_channels(db: Session, user: User, args: dict) -> dict:
             for ch in bots.channels().values() if ch.configured or ch.state["enabled"]]
     mail_on = bool(settings.imap_host and settings.imap_user)
     out = {"messengers": msgs,
-           "email": {"address": settings.imap_user if mail_on else None, "working": bool(mail.state["enabled"]),
+           "email": {"address": (settings.imap_to or settings.imap_user) if mail_on else None, "working": bool(mail.state["enabled"]),
                      "how": "Письмо на этот адрес становится обращением; автор - по адресу отправителя"
                             if mail_on else "Прием обращений по почте не настроен"}}
     if user.role == "admin":
         out["admin"] = {"telegram": {**bots.channels()["telegram"].state, "configured": bool(settings.telegram_token)},
-                        "max": {**bots.channels()["max"].state, "configured": bool(settings.max_token)},
                         "email": {**mail.state, "configured": bool(settings.imap_host)},
                         "ai": {"engine": ai.engine_name(), "enabled": settings.llm_enabled}}
     return out
@@ -565,7 +563,7 @@ def connect_messenger(db: Session, user: User, args: dict) -> dict:
     ch = _messenger(args.get("messenger"))
     if not ch.state["enabled"]:
         raise ToolError(f"Бот {ch.title} сейчас не подключен на сервере - привязать его нельзя")
-    user.tg_link_code = secrets.token_hex(3).upper()  # один код на все мессенджеры, как в профиле
+    user.tg_link_code = secrets.token_hex(3).upper()  # тот же код, что выдает профиль
     db.commit()
     return {"messenger": ch.key, "bot": ch.state["username"], "code": user.tg_link_code,
             "link": ch.link_for(user.tg_link_code), "already_linked": bool(getattr(user, ch.user_field)),
@@ -724,7 +722,7 @@ def skill(db: Session, user: User) -> str:
     changing = ", ".join(f"`{t['name']}`" for t in available if not t["annotations"].get("readOnlyHint")
                          and t["name"] != "connect_messenger")
     extra = "\n\n" + CHANNELS_GUIDE + ("\n\n" + MEETINGS_GUIDE if user.role in MEETING_ROLES else "")
-    about = "Telegram и MAX" + (", совещания" if user.role in MEETING_ROLES else "") \
+    about = "привязки Telegram" +(", совещания" if user.role in MEETING_ROLES else "") \
         + (", прием писем" if user.role == "admin" else "")
     cat_lines = "\n".join(f"- {c.name} - срок {c.sla_days} дн." + (f", отвечает {c.responsible.name}" if c.responsible else "")
                           for c in cats)

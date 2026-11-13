@@ -6,7 +6,7 @@ import os
 import tempfile
 
 os.environ["DATA_DIR"] = tempfile.mkdtemp(prefix="modus-test-")
-os.environ.update(AI_MODE="rules", BACKGROUND="0", TELEGRAM_BOT_TOKEN="", MAX_BOT_TOKEN="", IMAP_HOST="")
+os.environ.update(AI_MODE="rules", BACKGROUND="0", TELEGRAM_BOT_TOKEN="", IMAP_HOST="")
 
 import pytest
 from fastapi.testclient import TestClient
@@ -191,18 +191,18 @@ class Chat:
 
 
 def test_messenger_dialog(client):
-    """Диалог с ботом одинаков для Telegram и MAX; проверяем на MAX без сети, подменив отправку."""
+    """Диалог с Telegram-ботом без сети: отправку подменяем."""
     from app import bots
-    ch = bots.channels()["max"]
+    ch = bots.channels()["telegram"]
     ch.state.update(enabled=True, username="modus_otklik_bot")
     emp, boss = login(client, "pm"), login(client, "director")
     me = Chat(ch, "777")
 
     assert "для сотрудников" in me.write("Здравствуйте")
     hello, link = me.link(client, emp)
-    assert link["link"] == f"https://max.ru/modus_otklik_bot?start={link['code']}"
-    assert "MAX привязан" in hello
-    assert next(m for m in client.get("/api/me/messengers", headers=emp).json() if m["key"] == "max")["linked"]
+    assert link["link"] == f"https://t.me/modus_otklik_bot?start={link['code']}"
+    assert "Telegram привязан" in hello
+    assert next(m for m in client.get("/api/me/messengers", headers=emp).json() if m["key"] == "telegram")["linked"]
 
     # текст становится черновиком: до подтверждения обращение не создается
     assert "подробнее" in me.write("ой")
@@ -217,7 +217,7 @@ def test_messenger_dialog(client):
     assert "(дополнение)" in me.write("(дополнение) Особенно на складе.")       # следующее сообщение дополняет черновик
     assert "Каталог и данные" in me.last                                         # выбранное вручную не перезаписывается
     assert "Зарегистрировано: A-" in me.tap("Отправить")
-    a = next(r for r in client.get("/api/appeals?scope=mine", headers=emp).json() if r["source"] == "max")
+    a = next(r for r in client.get("/api/appeals?scope=mine", headers=emp).json() if r["source"] == "telegram")
     assert a["category"] == "Каталог и данные" and a["assignee"]
 
     # уточнение приходит в мессенджер, следующий текст - ответ
@@ -252,24 +252,24 @@ def test_messenger_dialog(client):
     assert "A-012" in card
     assert "Присоединил вас к A-012" in other.tap("У меня то же: A-012")
     assert "уже отправлен или отменен" in other.tap("Отправить")                 # черновик закрыт, дубль не создать
-    client.post("/api/me/messengers/max/unlink", headers=login(client, "design"))
+    client.post("/api/me/messengers/telegram/unlink", headers=login(client, "design"))
 
     # фото без подписи -> описание -> обращение с вложением
     bots._download = lambda ch, inc: {"filename": inc.file_name, "stored": "test-photo.jpg", "size": 5}
     assert "Файл получил" in me.write(file_url="x", file_name="щит.jpg")
     assert "Вложений: 1" in me.write("В щитовой на втором этаже нет маркировки автоматов, фото прилагаю.")
     me.tap("Отправить")
-    b = next(r for r in client.get("/api/appeals?scope=mine", headers=emp).json() if r["source"] == "max")
+    b = next(r for r in client.get("/api/appeals?scope=mine", headers=emp).json() if r["source"] == "telegram")
     assert [f["filename"] for f in client.get(f"/api/appeals/{b['id']}", headers=emp).json()["attachments"]] == ["щит.jpg"]
 
-    client.post("/api/me/messengers/max/unlink", headers=emp)
+    client.post("/api/me/messengers/telegram/unlink", headers=emp)
     ch.state.update(enabled=False)
 
 
 def test_handler_works_from_bot(client):
     """Ответственный разбирает входящие кнопками: взять в работу, уточнить, закрыть с итогом."""
     from app import bots
-    ch = bots.channels()["max"]
+    ch = bots.channels()["telegram"]
     ch.state.update(enabled=True, username="modus_otklik_bot")
     emp, mgr = login(client, "sales"), login(client, "contracts")
     boss = Chat(ch, "888")
@@ -292,12 +292,12 @@ def test_handler_works_from_bot(client):
     d = client.get(f"/api/appeals/{a['id']}", headers=emp).json()
     assert d["status"] == "done" and d["resolution"].startswith("Пункт") and d["can"]["rate"]
     # посторонний сотрудник чужую карточку кнопкой не откроет
-    client.post("/api/me/messengers/max/unlink", headers=mgr)
+    client.post("/api/me/messengers/telegram/unlink", headers=mgr)
     stranger = Chat(ch, "999")
     stranger.link(client, login(client, "office"))
     bots.handle(ch, bots.Incoming(chat_id="999", callback=f"st:{a['id']}:in_progress"))
     assert "не найдено" in stranger.last
-    client.post("/api/me/messengers/max/unlink", headers=login(client, "office"))
+    client.post("/api/me/messengers/telegram/unlink", headers=login(client, "office"))
     ch.state.update(enabled=False)
 
 

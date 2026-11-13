@@ -99,7 +99,7 @@ function Users() {
                   options={[{ value: '', label: 'Никто' },
                     ...fromList(meta.handlers.filter((h) => h.id !== u.id), (h) => h.name, (h) => h.position)]} />
               )}</td>
-              <td data-label="Мессенджеры">{u.telegram || u.max ? <Status dot="ok">{[u.telegram && 'Telegram', u.max && 'MAX'].filter(Boolean).join(', ')}</Status> : <span className="muted">-</span>}</td>
+              <td data-label="Мессенджеры">{u.telegram ? <Status dot="ok">Telegram</Status> : <span className="muted">-</span>}</td>
             </tr>
           ))}</tbody>
         </table>
@@ -134,9 +134,6 @@ function Channels() {
         <State icon={Sparkles} on={c.ai.enabled} title="ИИ-разбор">{c.ai.enabled ? c.ai.engine : 'Ключ не задан, работают правила'}</State>
         <State icon={Send} on={c.telegram.enabled} title="Telegram-бот">
           {c.telegram.enabled ? `@${c.telegram.username}` : c.telegram.configured ? `Не запущен: ${c.telegram.error}` : 'Токен не задан'}
-        </State>
-        <State icon={Send} on={c.max.enabled} title="MAX-бот">
-          {c.max.enabled ? `@${c.max.username}` : c.max.configured ? `Не запущен: ${c.max.error}` : 'Готов к подключению: нужен токен (MAX_BOT_TOKEN)'}
         </State>
         <State icon={Mail} on={c.email.enabled && !c.email.error} title="Почта">
           {c.email.enabled ? (c.email.error ? `Ошибка: ${c.email.error}` : c.email.address) : 'Ящик не подключен'}

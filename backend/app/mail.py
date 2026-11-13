@@ -66,7 +66,8 @@ def check_once() -> int:
     try:
         box.login(settings.imap_user, settings.imap_password)
         box.select(settings.imap_folder)
-        _, data = box.search(None, "UNSEEN")
+        to = settings.imap_to
+        _, data = box.search(None, "UNSEEN", "TO", f'"{to}"') if to else box.search(None, "UNSEEN")
         for num in data[0].split():
             _, parts = box.fetch(num, "(RFC822)")  # письмо помечается прочитанным
             msg = email.message_from_bytes(parts[0][1])

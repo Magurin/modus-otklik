@@ -1,9 +1,9 @@
-"""Боты в мессенджерах: Telegram и MAX. Сотрудник пишет или надиктовывает обращение, проверяет черновик,
+"""Бот в Telegram. Сотрудник пишет или надиктовывает обращение, проверяет черновик,
 получает номер и уведомления; ответственный разбирает входящие кнопками прямо в чате.
 
-Логика диалога одна на оба мессенджера (Dialog), различается только транспорт (Channel).
+Логика диалога (Dialog) отделена от транспорта (Channel): другой мессенджер подключается новым транспортом.
 Привязка к учетной записи - по одноразовому коду из профиля: посторонний написать не может.
-Оба бота работают через long polling, внешний адрес и вебхук не нужны.
+Бот работает через long polling, внешний адрес и вебхук не нужны.
 Незавершенный шаг диалога (черновик, ожидание текста) хранится в User.bot_state и переживает перезапуск.
 """
 from __future__ import annotations
@@ -55,7 +55,7 @@ class Incoming:
 
 class Channel:
     """Транспорт одного мессенджера. Наследник реализует _me, _send, _updates."""
-    key = ""            # telegram | max
+    key = ""            # telegram
     title = ""
     user_field = ""     # поле User, где хранится id собеседника
     pause = 0.5         # пауза между исходящими сообщениями
@@ -231,123 +231,12 @@ class Telegram(Channel):
         return out
 
 
-class Max(Channel):
-    """MAX (platform-api). Токен передается в заголовке Authorization."""
-    key, title, user_field = "max", "MAX", "max_user_id"
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.configured = bool(settings.max_token)
-        self._marker = None
-        self._base = settings.max_api_url
-        self._http = None
-
-    def _client(self) -> httpx.Client:
-        if self._http is None:
-            # сертификат проверяется всегда; для домена с сертификатом Минцифры путь к корневому задается в MAX_CA_FILE
-            self._http = httpx.Client(headers={"Authorization": settings.max_token}, timeout=40,
-                                      verify=settings.max_ca_file or True)
-        return self._http
-
-    def _call(self, method: str, path: str, **kw) -> dict:
-        r = self._client().request(method, self._base + path, **kw)
-        if r.status_code >= 400:
-            try:
-                msg = r.json().get("message") or r.text
-            except ValueError:
-                msg = r.text
-            raise RuntimeError(f"MAX API {r.status_code}: {msg[:160]}")
-        return r.json()
-
-    def link_for(self, code: str) -> str:
-        u = self.state["username"]
-        return f"https://max.ru/{u}" + (f"?start={code}" if code else "") if u else ""
-
-    def _me(self) -> str:
-        try:
-            me = self._call("GET", "/me")
-        except httpx.ConnectError as e:
-            # новый домен требует корневой сертификат Минцифры; без него работаем через прежний домен
-            if "CERTIFICATE_VERIFY_FAILED" not in str(e) or settings.max_ca_file or self._base == settings.max_api_fallback:
-                raise
-            log.warning("MAX: %s требует сертификат Минцифры (MAX_CA_FILE), используем %s", self._base, settings.max_api_fallback)
-            self._base = settings.max_api_fallback
-            me = self._call("GET", "/me")
-        return me.get("username") or str(me.get("user_id"))
-
-    def _send(self, chat_id: str, text: str, buttons: Buttons, edit_id: str) -> None:
-        rows = []
-        for row in buttons:
-            out = []
-            for label, data in row:
-                if not data.startswith("web:"):
-                    out.append({"type": "callback", "text": label, "payload": data})
-                elif settings.webapp_url:
-                    out.append({"type": "link", "text": label, "url": settings.webapp_url + data[4:]})
-            if out:
-                rows.append(out)
-        if rows:
-            try:
-                self._call("POST", "/messages", params={"user_id": chat_id},
-                           json={"text": text, "attachments": [{"type": "inline_keyboard", "payload": {"buttons": rows}}]})
-                return
-            except RuntimeError as e:
-                log.warning("MAX: кнопки не приняты, отправляем текст без них: %s", e)
-        self._call("POST", "/messages", params={"user_id": chat_id}, json={"text": text})
-
-    def _updates(self) -> list[Incoming]:
-        params = {"timeout": 25, "limit": 100, "types": "message_created,bot_started,message_callback"}
-        if self._marker is not None:
-            params["marker"] = self._marker
-        data = self._call("GET", "/updates", params=params)
-        if data.get("marker") is not None:
-            self._marker = data["marker"]
-        out = []
-        for upd in data.get("updates") or []:
-            kind = upd.get("update_type")
-            if kind == "bot_started":
-                uid = (upd.get("user") or {}).get("user_id")
-                if uid:
-                    out.append(Incoming(chat_id=str(uid), text="/start", start_code=(upd.get("payload") or "").strip()))
-                continue
-            if kind == "message_callback":
-                cb = upd.get("callback") or {}
-                uid = (cb.get("user") or {}).get("user_id")
-                if uid:
-                    try:
-                        self._call("POST", "/answers", params={"callback_id": cb.get("callback_id")}, json={"notification": "Принято"})
-                    except Exception:
-                        pass
-                    out.append(Incoming(chat_id=str(uid), callback=cb.get("payload") or ""))
-                continue
-            if kind != "message_created":
-                continue
-            msg = upd.get("message") or {}
-            if (msg.get("recipient") or {}).get("chat_type") != "dialog":
-                continue
-            sender = msg.get("sender") or {}
-            if sender.get("is_bot") or not sender.get("user_id"):
-                continue
-            body = msg.get("body") or {}
-            inc = Incoming(chat_id=str(sender["user_id"]), text=(body.get("text") or "").strip())
-            for att in body.get("attachments") or []:
-                payload = att.get("payload") or {}
-                if att.get("type") == "audio" and not inc.audio_url:
-                    inc.audio_url = payload.get("url") or ""
-                    inc.transcript = (att.get("transcription") or payload.get("transcription") or "").strip()
-                elif att.get("type") in ("image", "file", "video") and not inc.file_url and payload.get("url"):
-                    inc.file_url, inc.file_size = payload["url"], att.get("size") or 0
-                    inc.file_name = att.get("filename") or {"image": "photo.jpg", "video": "video.mp4"}.get(att["type"], "file")
-            out.append(inc)
-        return out
-
-
 CHANNELS: dict[str, Channel] = {}
 
 
 def channels() -> dict[str, Channel]:
     if not CHANNELS:
-        for ch in (Telegram(), Max()):
+        for ch in (Telegram(),):
             CHANNELS[ch.key] = ch
     return CHANNELS
 

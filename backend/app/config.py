@@ -72,14 +72,11 @@ class Settings:
     webapp_url = (_env("WEBAPP_URL") or (app_url if app_url.startswith("https://") else "")).rstrip("/")
     tz_hours = int(_env("TZ_OFFSET_HOURS", "5"))     # часовой пояс компании относительно UTC: даты в боте и время сводки
     digest_hour = int(_env("DIGEST_HOUR", "9"))      # во сколько по местному времени бот присылает сводку ответственным
-    max_token = _env("MAX_BOT_TOKEN")
-    max_api_url = _env("MAX_API_URL", "https://platform-api2.max.ru").rstrip("/")
-    max_api_fallback = "https://platform-api.max.ru"   # прежний домен: работает с обычными сертификатами
-    max_ca_file = _env("MAX_CA_FILE")                  # корневой сертификат Минцифры для нового домена
     imap_host = _env("IMAP_HOST")
     imap_user = _env("IMAP_USER")
     imap_password = _env("IMAP_PASSWORD")
     imap_folder = _env("IMAP_FOLDER", "INBOX")
+    imap_to = _env("IMAP_TO")  # брать только письма на этот адрес: остальная почта ящика обращениями не становится
 
     # Оргструктура из внешних систем. Адрес не задан - работает встроенный эмулятор (тот же HTTP-клиент, подмена транспорта)
     onec_odata_url = _env("ONEC_ODATA_URL").rstrip("/")      # .../<база>/odata/standard.odata

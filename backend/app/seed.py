@@ -221,7 +221,7 @@ def migrate() -> None:
     """Добавить колонки, появившиеся после первого запуска (SQLite сам таблицы не обновляет)."""
     from sqlalchemy import inspect, text
     added = {
-        "users": {"max_user_id": "VARCHAR(40)", "bot_state": "JSON", "bot_prefs": "JSON", "ext_ids": "JSON",
+        "users": {"bot_state": "JSON", "bot_prefs": "JSON", "ext_ids": "JSON",
                   "gcal": "JSON", "agent_key_hash": "VARCHAR(64)"},
         "departments": {"ext_ids": "JSON"},
         "appeals": {"rating": "INTEGER", "reminded_at": "DATETIME", "gcal": "JSON"},
@@ -232,6 +232,14 @@ def migrate() -> None:
             if name not in have:
                 with engine.begin() as con:
                     con.execute(text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+    dropped = {"users": ["max_user_id"]}  # колонка снятого второго мессенджера
+    for table, columns in dropped.items():
+        have = {c["name"] for c in inspect(engine).get_columns(table)}
+        for name in columns:
+            if name in have:
+                with engine.begin() as con:
+                    con.execute(text(f"DROP INDEX IF EXISTS ix_{table}_{name}"))
+                    con.execute(text(f"ALTER TABLE {table} DROP COLUMN {name}"))
 
 
 def seed_if_empty() -> None:
